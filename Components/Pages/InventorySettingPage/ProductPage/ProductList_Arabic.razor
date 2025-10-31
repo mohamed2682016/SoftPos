@@ -1,0 +1,172 @@
+@page "/product-ar"
+@inject ProductService productService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>المنتجات</h4>
+        </div>
+        <div class="col text-start">
+            <a class="btn btn-primary" href="/product/add-ar">
+                <i class="fas fa-plus me-2"></i> إضافة منتج
+            </a>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" placeholder="ابحث بالاسم أو الباركود..." @bind="searchText" @bind:event="oninput" @onkeyup="FilterProducts" />
+                @if (!string.IsNullOrEmpty(searchText))
+                {
+                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col">
+            <div class="table-responsive">
+                <MudTable Items="@filteredProducts" Dense="@dense" Hover="@hover">
+
+                    <HeaderContent>
+                        <MudTh>اسم المنتج</MudTh>
+                        <MudTh>كود المنتج</MudTh>
+                        <MudTh>الباركود</MudTh>
+                        <MudTh>الفئة</MudTh>
+                        <MudTh>الكمية المتاحة</MudTh>
+                        <MudTh>سعر البيع</MudTh>
+                        <MudTh>سعر الشراء</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="ProductName" Style="width:250px;">@context.ProductName</MudTd>
+                        <MudTd DataLabel="ProductCode" Style="width:120px;">@context.ProductCode</MudTd>
+                        <MudTd DataLabel="Barcode" Style="width:140px;">@context.Barcode</MudTd>
+                        <MudTd DataLabel="GroupName" Style="width:180px;">@context.GroupName</MudTd>
+                        <MudTd DataLabel="CurrentStock">
+                            @if (context.CurrentStock <= 0)
+                            {
+                                <span class="badge bg-danger">@context.CurrentStock</span>
+                            }
+                            else if (context.CurrentStock <= 10)
+                            {
+                                <span class="badge bg-warning text-dark">@context.CurrentStock</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">@context.CurrentStock</span>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="SalesRate">@context.SalesRate.ToString("N2")</MudTd>
+                        <MudTd DataLabel="PurchaseRate">@context.PurchaseRate.ToString("N2")</MudTd>
+                        <MudTd DataLabel="">
+                            <div class="d-flex justify-content-start">
+                                <a class="btn btn-warning btn-sm me-2" href="/product/@context.ProductId-ar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-danger btn-sm" @onclick="() => Delete(context.ProductId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private List<ProductView> listProduct = new();
+    private List<ProductView> filteredProducts = new();
+    private string searchText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listProduct = await productService.GetAllProductsAsync();
+            filteredProducts = listProduct;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void FilterProducts()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            filteredProducts = listProduct;
+        }
+        else
+        {
+            var search = searchText.Trim().ToLower();
+            filteredProducts = listProduct.Where(p =>
+                (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.ToLower().Contains(search)) ||
+                (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.ToLower().Contains(search)) ||
+                (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(search))
+            ).ToList();
+        }
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchText = string.Empty;
+        filteredProducts = listProduct;
+        StateHasChanged();
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            // Show a confirmation dialog to the user
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذا المنتج؟");
+
+            if (!confirmed)
+            {
+                return; // User canceled the action
+            }
+
+            // Attempt to delete the product
+            bool isDeleted = await productService.DeleteProductAsync(id);
+
+            if (isDeleted == true)
+            {
+                Snackbar.Add("تم حذف المنتج بنجاح.", Severity.Success);
+                await LoadData(); // Reload the data after successful deletion
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف المنتج لأنه مستخدم في العمليات.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف المنتج: {ex.Message}", Severity.Error);
+        }
+    }
+}

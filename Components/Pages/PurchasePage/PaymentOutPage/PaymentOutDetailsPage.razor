@@ -1,0 +1,156 @@
+﻿@page "/payment-out/details/{id:int}"
+@inject CompanyService companyService
+@inject AccountLedgerService accountledgerService
+@inject PaymentOutService paymentoutService
+@inject IPrintingService PrintingService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+
+<div class="container mt-4">
+    <div class="py-4">
+        <!-- Title Section -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h4 class="text-primary d-flex align-items-center">
+                    <i class="fas fa-file-invoice-dollar me-2"></i> دفعة صادرة | طباعة
+                </h4>
+            </div>
+        </div>
+
+        <!-- Invoice Action Section -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <ul class="list-inline">
+                    <li class="list-inline-item">
+                        <button class="btn btn-sm btn-success" @onclick="@(_ => PrintingService.Print("printable-form", PrintType.Html))">
+                            <i class="fas fa-print me-1"></i> طباعة
+                        </button>
+                    </li>
+                    <li class="list-inline-item">
+                        <button class="btn btn-sm btn-danger" @onclick="()=>PrintDiv()">
+                            <i class="fas fa-file-pdf me-1"></i> PDF
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Invoice Details Section -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div id="printable-form">
+                    <div class="row mb-4">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>معلومات المورد</th>
+                                    <th>معلومات الشركة</th>
+                                    <th>معلومات الفاتورة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <!-- Customer Info -->
+                                    <td>
+                                        <strong>@ledger.LedgerName</strong><br />
+                                        @ledger.Email<br />
+                                        @ledger.Phone<br />
+                                        @ledger.Address<br />
+                                    </td>
+                                    <!-- Company Info -->
+                                    <td>
+                                        <strong>@company?.CompanyName</strong><br />
+                                        @company?.Email<br />
+                                        @company?.PhoneNo<br />
+                                        @company?.Address<br />
+                                    </td>
+                                    <!-- Invoice Info -->
+                                    <td>
+                                        <strong>رقم الفاتورة:</strong> @master.VoucherNo<br />
+                                        <strong>التاريخ:</strong> @master.Date<br />
+                                        <strong>مبلغ الاستلام:</strong> @master.Amount<br />
+                                        <strong>الحالة:</strong> @master.Status<br />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Product Table -->
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th class="text-end">مبلغ الفاتورة</th>
+                                <th class="text-end">مبلغ الدفع</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (listReceiveDetails != null)
+                            {
+                                @foreach (var item in listReceiveDetails)
+                                {
+                                    <tr>
+                                        <td>@item.VoucherNo</td>
+                                        <td>@item.Date</td>
+                                        <td class="text-end">@item.InvoiceAmount</td>
+                                        <td class="text-end">@item.ReceiveAmount</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2"></td>
+                                <th>المبلغ بالكلمات</th>
+                                <td class="text-end">@strNumberToWords</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"></td>
+                                <th>ملاحظات</th>
+                                <td class="text-end">@master.Narration</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+    IList<PaymentReceiveView> listReceiveDetails;
+    private PaymentMaster master = new PaymentMaster();
+    private AccountLedger ledger = new AccountLedger();
+    private CompanyView company;
+    string strNumberToWords;
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+    private async Task LoadData()
+    {
+        try
+        {
+            company = await companyService.GetAllCompaniesByIdAsync(1);
+            master = await paymentoutService.GetPaymentByIdAsync(id);
+            ledger = await accountledgerService.GetAccountLedgerByIdAsync(master.LedgerId);
+            listReceiveDetails = await paymentoutService.PaymentOutDetailsViewAsync(id);
+            if (master != null)
+            {
+                strNumberToWords = NumberToWords.ConvertAmount(Convert.ToDouble(master.Amount.ToString()));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task PrintDiv()
+    {
+        await JsRuntime.InvokeVoidAsync("printDiv", "printable-form");
+    }
+}

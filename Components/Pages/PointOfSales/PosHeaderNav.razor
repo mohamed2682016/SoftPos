@@ -1,0 +1,65 @@
+﻿@inject MudBlazor.ISnackbar Snackbar
+<div class="container-fluid pos-header">
+
+    <!-- حاوي الرأس -->
+    <div class="row">
+        <!-- الموقع والتاريخ والوقت -->
+        <div class="col-md-10 d-flex align-items-center mb-3 mb-md-0">
+            <p class="mb-0 me-2 fw-bold">الموقع:</p>
+            <div class="me-3" style="width: 28%;">
+                <select class="form-select" aria-label="اختر المستودع" @bind="@master.WarehouseId" style="height: 38px;">
+                    <option value="0">اختر</option>
+                    @if (WarehouseList != null)
+                    {
+                        foreach (var warehouse in WarehouseList)
+                        {
+                            <option value="@warehouse.WarehouseId">@warehouse.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="d-none d-md-flex bg-primary text-white py-1 px-2 rounded">
+                <span class="curr_datetime fw-semibold">
+                    <DateTimeDisplay />
+                </span>
+            </div>
+        </div>
+
+        <!-- قسم الأزرار -->
+        <div class="col-md-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <a href="/dashboard" class="btn btn-outline-secondary d-flex align-items-center" title="العودة">
+                <i class="fa fa-backward text-primary"></i>
+                <span class="d-inline d-md-none ms-2">العودة</span>
+            </a>
+            <a href="/dashboard" class="btn btn-primary d-flex align-items-center" id="add_expense" title="لوحة التحكم">
+                <i class="fa fa-tachometer-alt"></i> لوحة التحكم
+            </a>
+        </div>
+    </div>
+</div>
+
+    @code
+    {
+    [Parameter]
+    public SalesMaster master { get; set; } = new();
+
+    [Parameter]
+    public List<Warehouse> WarehouseList { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+    private Task LoadData()
+    {
+        try
+        {
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+        return Task.CompletedTask;
+    }
+    }

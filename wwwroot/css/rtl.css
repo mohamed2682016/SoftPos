@@ -1,0 +1,315 @@
+/* RTL Enhancements for QuickproPos */
+
+/* Fix Bootstrap RTL Issues */
+[dir="rtl"] .form-check-input {
+    float: right;
+    margin-left: 0.5em;
+    margin-right: 0;
+}
+
+[dir="rtl"] .form-check {
+    padding-right: 1.5em;
+    padding-left: 0;
+}
+
+/* Sidebar RTL Adjustments */
+[dir="rtl"] .sidebar {
+    border-left: 1px solid #dee2e6;
+    border-right: none;
+}
+
+/* Icon Spacing RTL */
+[dir="rtl"] .ms-2 {
+    margin-right: 0.5rem !important;
+    margin-left: 0 !important;
+}
+
+[dir="rtl"] .ms-3 {
+    margin-right: 1rem !important;
+    margin-left: 0 !important;
+}
+
+[dir="rtl"] .me-2 {
+    margin-left: 0.5rem !important;
+    margin-right: 0 !important;
+}
+
+[dir="rtl"] .me-3 {
+    margin-left: 1rem !important;
+    margin-right: 0 !important;
+}
+
+/* Dropdown Menu RTL */
+[dir="rtl"] .dropdown-menu {
+    text-align: right;
+}
+
+[dir="rtl"] .dropdown-item {
+    text-align: right;
+}
+
+/* Card RTL */
+[dir="rtl"] .card {
+    text-align: right;
+}
+
+/* Table RTL */
+[dir="rtl"] .table {
+    text-align: right;
+}
+
+/* Button Group RTL */
+[dir="rtl"] .btn-group {
+    direction: rtl;
+}
+
+/* Input Group RTL */
+[dir="rtl"] .input-group {
+    direction: rtl;
+}
+
+/* Navbar RTL */
+[dir="rtl"] .navbar-nav {
+    direction: rtl;
+}
+
+/* Breadcrumb RTL */
+[dir="rtl"] .breadcrumb {
+    direction: rtl;
+}
+
+/* Pagination RTL */
+[dir="rtl"] .pagination {
+    direction: rtl;
+}
+
+/* Alert RTL */
+[dir="rtl"] .alert {
+    text-align: right;
+}
+
+/* Modal RTL */
+[dir="rtl"] .modal-header,
+[dir="rtl"] .modal-body,
+[dir="rtl"] .modal-footer {
+    text-align: right;
+}
+
+/* List Group RTL */
+[dir="rtl"] .list-group {
+    text-align: right;
+}
+
+/* Nav Pills/Tabs RTL */
+[dir="rtl"] .nav-pills,
+[dir="rtl"] .nav-tabs {
+    direction: rtl;
+}
+
+/* Progress Bar RTL */
+[dir="rtl"] .progress {
+    direction: ltr;
+}
+
+/* Toast RTL */
+[dir="rtl"] .toast {
+    text-align: right;
+}
+
+/* Collapse Icon RTL */
+[dir="rtl"] .fa-chevron-down {
+    transform: rotate(0deg);
+}
+
+/* Fix MudBlazor RTL */
+[dir="rtl"] .mud-table {
+    direction: rtl;
+}
+
+[dir="rtl"] .mud-dialog {
+    direction: rtl;
+}
+
+[dir="rtl"] .mud-snackbar {
+    direction: rtl;
+}
+
+[dir="rtl"] .mud-menu {
+    direction: rtl;
+}
+
+/* Fix Number Inputs */
+[dir="rtl"] input[type="number"] {
+    text-align: right;
+}
+
+/* Fix Select Dropdown Arrow */
+[dir="rtl"] select.form-select,
+[dir="rtl"] select.form-control {
+    background-position: left 0.75rem center;
+    padding-left: 2.25rem;
+    padding-right: 0.75rem;
+}
+
+/* Sidebar RTL Enhancements */
+[dir="rtl"] .sidebar {
+    border-left: 1px solid #dee2e6;
+    border-right: none;
+    right: 0;
+    left: auto;
+}
+
+/* Main Content RTL */
+[dir="rtl"] .content {
+    margin-right: 0;
+    margin-left: auto;
+}
+
+/* Nav Menu RTL */
+[dir="rtl"] .nav-link {
+    text-align: right;
+}
+
+[dir="rtl"] .nav-link i {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Dropdown Menu RTL */
+[dir="rtl"] .dropdown-menu {
+    right: 0;
+    left: auto;
+    text-align: right;
+}
+
+/* Form Controls RTL */
+[dir="rtl"] .form-control,
+[dir="rtl"] .form-select {
+    text-align: right;
+}
+
+/* Button RTL */
+[dir="rtl"] .btn {
+    text-align: center;
+}
+
+/* Table RTL */
+[dir="rtl"] .table th,
+[dir="rtl"] .table td {
+    text-align: right;
+}
+
+/* Card RTL */
+[dir="rtl"] .card-header,
+[dir="rtl"] .card-body,
+[dir="rtl"] .card-footer {
+    text-align: right;
+}
+
+/* Badge RTL */
+[dir="rtl"] .badge {
+    margin-left: 0.25rem;
+    margin-right: 0;
+}
+
+/* Spacing RTL */
+[dir="rtl"] .ms-1 { margin-right: 0.25rem !important; margin-left: 0 !important; }
+[dir="rtl"] .ms-2 { margin-right: 0.5rem !important; margin-left: 0 !important; }
+[dir="rtl"] .ms-3 { margin-right: 1rem !important; margin-left: 0 !important; }
+[dir="rtl"] .ms-4 { margin-right: 1.5rem !important; margin-left: 0 !important; }
+[dir="rtl"] .ms-5 { margin-right: 3rem !important; margin-left: 0 !important; }
+
+[dir="rtl"] .me-1 { margin-left: 0.25rem !important; margin-right: 0 !important; }
+[dir="rtl"] .me-2 { margin-left: 0.5rem !important; margin-right: 0 !important; }
+[dir="rtl"] .me-3 { margin-left: 1rem !important; margin-right: 0 !important; }
+[dir="rtl"] .me-4 { margin-left: 1.5rem !important; margin-right: 0 !important; }
+[dir="rtl"] .me-5 { margin-left: 3rem !important; margin-right: 0 !important; }
+
+[dir="rtl"] .ps-1 { padding-right: 0.25rem !important; padding-left: 0 !important; }
+[dir="rtl"] .ps-2 { padding-right: 0.5rem !important; padding-left: 0 !important; }
+[dir="rtl"] .ps-3 { padding-right: 1rem !important; padding-left: 0 !important; }
+[dir="rtl"] .ps-4 { padding-right: 1.5rem !important; padding-left: 0 !important; }
+[dir="rtl"] .ps-5 { padding-right: 3rem !important; padding-left: 0 !important; }
+
+[dir="rtl"] .pe-1 { padding-left: 0.25rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pe-2 { padding-left: 0.5rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pe-3 { padding-left: 1rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pe-4 { padding-left: 1.5rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pe-5 { padding-left: 3rem !important; padding-right: 0 !important; }
+
+/* Text Alignment RTL */
+[dir="rtl"] .text-start { text-align: right !important; }
+[dir="rtl"] .text-end { text-align: left !important; }
+
+/* Flex RTL */
+[dir="rtl"] .flex-row { flex-direction: row-reverse !important; }
+[dir="rtl"] .flex-row-reverse { flex-direction: row !important; }
+
+/* Justify Content RTL */
+[dir="rtl"] .justify-content-start { justify-content: flex-end !important; }
+[dir="rtl"] .justify-content-end { justify-content: flex-start !important; }
+
+/* Float RTL */
+[dir="rtl"] .float-start { float: right !important; }
+[dir="rtl"] .float-end { float: left !important; }
+
+/* Border RTL */
+[dir="rtl"] .border-start { border-right: 1px solid #dee2e6 !important; border-left: none !important; }
+[dir="rtl"] .border-end { border-left: 1px solid #dee2e6 !important; border-right: none !important; }
+
+/* MudBlazor RTL Enhancements */
+[dir="rtl"] .mud-button-root {
+    direction: rtl;
+}
+
+[dir="rtl"] .mud-input-control {
+    direction: rtl;
+}
+
+[dir="rtl"] .mud-select {
+    direction: rtl;
+}
+
+[dir="rtl"] .mud-table-cell {
+    text-align: right;
+}
+
+[dir="rtl"] .mud-dialog-title {
+    text-align: right;
+}
+
+[dir="rtl"] .mud-dialog-content {
+    text-align: right;
+}
+
+[dir="rtl"] .mud-dialog-actions {
+    justify-content: flex-start;
+}
+
+/* Custom RTL Styles */
+[dir="rtl"] .rtl-text {
+    direction: rtl;
+    text-align: right;
+}
+
+[dir="rtl"] .rtl-container {
+    direction: rtl;
+}
+
+/* Fix Icon Spacing */
+[dir="rtl"] .fa,
+[dir="rtl"] .fas,
+[dir="rtl"] .far,
+[dir="rtl"] .fab {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Fix Chevron Icons */
+[dir="rtl"] .fa-chevron-right {
+    transform: rotate(180deg);
+}
+
+[dir="rtl"] .fa-chevron-left {
+    transform: rotate(180deg);
+}

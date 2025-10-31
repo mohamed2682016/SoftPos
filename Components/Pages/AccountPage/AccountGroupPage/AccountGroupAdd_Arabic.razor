@@ -1,0 +1,206 @@
+﻿@page "/account-group/add-ar"
+@page "/account-group/{id:int}-ar"
+@inject AccountGroupService accountGroupService
+@inject NavigationManager NavigationManager
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@using SoftPos.Resources
+@using SoftPos.Data.Account
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl" style="font-family: 'Cairo', sans-serif;">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>@(id == 0 ? "إضافة مجموعة حساب جديدة" : "تعديل مجموعة الحساب")</h4>
+        </div>
+        <div class="col text-start">
+            <a class="btn btn-secondary" href="/account-group-ar">
+                <i class="fas fa-arrow-right me-2"></i> رجوع
+            </a>
+        </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <EditForm Model="model" OnValidSubmit="Save">
+                        <DataAnnotationsValidator />
+                        <div class="row">
+                            <div class="col-md-12 form-group mb-3">
+                                <label class="control-label">اسم مجموعة الحساب <code>*</code></label>
+                                <input type="text" class="form-control" @bind="model.AccountGroupName" placeholder="أدخل اسم مجموعة الحساب">
+                                <ValidationMessage For="@(() => model.AccountGroupName)" class="text-danger" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group mb-3">
+                                <label class="control-label">تحت <code>*</code></label>
+                                <select class="form-select" @bind="model.Under">
+                                    <option value="">-- اختر --</option>
+                                    <option value="Assets">الأصول</option>
+                                    <option value="Liabilities">الخصوم</option>
+                                    <option value="Capital">رأس المال</option>
+                                    <option value="Income">الإيرادات</option>
+                                    <option value="Expenses">المصروفات</option>
+                                </select>
+                                <ValidationMessage For="@(() => model.Under)" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 form-group mb-3">
+                                <label class="control-label">طبيعة المجموعة <code>*</code></label>
+                                <select class="form-select" @bind="model.Nature">
+                                    <option value="">-- اختر --</option>
+                                    <option value="Assets">أصول</option>
+                                    <option value="Liabilities">خصوم</option>
+                                    <option value="Capital">رأس مال</option>
+                                    <option value="Income">إيرادات</option>
+                                    <option value="Expenses">مصروفات</option>
+                                </select>
+                                <ValidationMessage For="@(() => model.Nature)" class="text-danger" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-save me-2"></i> @(id == 0 ? "حفظ" : "تحديث")
+                                </button>
+                                <a class="btn btn-secondary" href="/account-group-ar">
+                                    <i class="fas fa-times me-2"></i> إلغاء
+                                </a>
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6>معلومات إضافية</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">تاريخ الإنشاء:</label>
+                        <p class="form-control-plaintext">@DateTimeHelper.Now.ToString("yyyy-MM-dd")</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">الحالة:</label>
+                        <p class="form-control-plaintext">
+                            <span class="badge bg-success">نشط</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private AccountGroupView model = new AccountGroupView();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (id > 0)
+        {
+            await LoadData();
+        }
+        else
+        {
+            // Initialize for new record
+            model = new AccountGroupView
+            {
+                AccountGroupId = 0,
+                AccountGroupName = "",
+                Under = "",
+                Nature = ""
+            };
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            var accountGroup = await accountGroupService.GetAccountGroupByIdAsync(id);
+            if (accountGroup == null)
+            {
+                Snackbar.Add("مجموعة الحساب غير موجودة", Severity.Error);
+                NavigationManager.NavigateTo("/account-group-ar");
+            }
+            else
+            {
+                model = new AccountGroupView
+                {
+                    AccountGroupId = accountGroup.AccountGroupId,
+                    AccountGroupName = accountGroup.AccountGroupName,
+                    Under = "", // Will be populated from service
+                    Nature = accountGroup.Nature,
+                    GroupUnder = accountGroup.GroupUnder
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (id == 0)
+            {
+                // Add new - Convert AccountGroupView to AccountGroup
+                var accountGroup = new AccountGroup
+                {
+                    AccountGroupName = model.AccountGroupName,
+                    Nature = model.Nature,
+                    GroupUnder = model.GroupUnder,
+                    AddedDate = DateTimeHelper.Now
+                };
+                
+                var result = await accountGroupService.AddAccountGroupAsync(accountGroup);
+                if (result > 0)
+                {
+                    Snackbar.Add("تم إضافة مجموعة الحساب بنجاح", Severity.Success);
+                    NavigationManager.NavigateTo("/account-group-ar");
+                }
+                else
+                {
+                    Snackbar.Add("فشل في إضافة مجموعة الحساب - قد يكون الاسم موجود بالفعل", Severity.Error);
+                }
+            }
+            else
+            {
+                // Update existing - Convert AccountGroupView to AccountGroup
+                var accountGroup = new AccountGroup
+                {
+                    AccountGroupId = model.AccountGroupId,
+                    AccountGroupName = model.AccountGroupName,
+                    Nature = model.Nature,
+                    GroupUnder = model.GroupUnder,
+                    ModifyDate = DateTimeHelper.Now
+                };
+                
+                var result = await accountGroupService.UpdateAccountGroupAsync(accountGroup);
+                if (result)
+                {
+                    Snackbar.Add("تم تحديث مجموعة الحساب بنجاح", Severity.Success);
+                    NavigationManager.NavigateTo("/account-group-ar");
+                }
+                else
+                {
+                    Snackbar.Add("فشل في تحديث مجموعة الحساب - قد يكون الاسم موجود بالفعل", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في حفظ البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+}

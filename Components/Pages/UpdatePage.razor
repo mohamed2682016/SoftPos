@@ -1,0 +1,224 @@
+﻿@page "/update"
+@using SoftPos.Services
+@inject UpdateService UpdateService
+
+<div class="update-page" style="direction: rtl; text-align: right; padding: 20px;">
+    <div class="container">
+        <h2>🔄 التحقق من التحديثات</h2>
+        
+        <div class="current-version" style="margin: 20px 0; padding: 15px; background: #f0f0f0; border-radius: 8px;">
+            <p><strong>الإصدار الحالي:</strong> @UpdateService.GetCurrentVersion()</p>
+        </div>
+
+        @if (isChecking)
+        {
+            <div class="checking" style="text-align: center; padding: 40px;">
+                <div class="spinner" style="margin: 0 auto 20px;"></div>
+                <p>جاري البحث عن تحديثات...</p>
+            </div>
+        }
+        else if (updateInfo != null)
+        {
+            <div class="update-available" style="background: #e8f5e9; padding: 20px; border-radius: 8px; border: 2px solid #4caf50;">
+                <h3 style="color: #2e7d32; margin-top: 0;">🎉 تحديث جديد متاح!</h3>
+                
+                <div class="update-details" style="margin: 20px 0;">
+                    <p><strong>الإصدار الجديد:</strong> @updateInfo.Version</p>
+                    <p><strong>تاريخ الإصدار:</strong> @updateInfo.ReleaseDate</p>
+                    <p><strong>حجم الملف:</strong> @updateInfo.FileSize</p>
+                </div>
+
+                <div class="release-notes" style="background: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <h4>ما الجديد في هذا الإصدار:</h4>
+                    <pre style="white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">@updateInfo.ReleaseNotesAr</pre>
+                </div>
+
+                @if (isDownloading)
+                {
+                    <div class="download-progress" style="margin: 20px 0;">
+                        <div class="progress-bar" style="width: 100%; height: 30px; background: #e0e0e0; border-radius: 15px; overflow: hidden;">
+                            <div class="progress" style="width: @(downloadProgress)%; height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); transition: width 0.3s;"></div>
+                        </div>
+                        <p style="text-align: center; margin-top: 10px;">جاري التحميل... @downloadProgress.ToString("F1")%</p>
+                    </div>
+                }
+                else if (downloadComplete)
+                {
+                    <div class="download-complete" style="background: #fff3cd; padding: 15px; border-radius: 5px; border: 1px solid #ffc107;">
+                        <p style="margin: 0;">✅ تم تحميل التحديث بنجاح!</p>
+                        <p style="margin: 10px 0 0;">الملف محفوظ في مجلد التنزيلات. قم بإغلاق البرنامج وتشغيل ملف التحديث.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="action-buttons" style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button @onclick="DownloadUpdate" class="btn btn-success" style="flex: 1; padding: 12px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; background: #4caf50; color: white;">
+                            📥 تحميل التحديث الآن
+                        </button>
+                        
+                        @if (!updateInfo.Mandatory)
+                        {
+                            <button @onclick="RemindLater" class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; background: #9e9e9e; color: white;">
+                                ⏰ تذكيري لاحقاً
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (updateInfo.Mandatory)
+                {
+                    <div class="mandatory-notice" style="background: #ffebee; padding: 10px; border-radius: 5px; margin-top: 15px; border: 1px solid #f44336;">
+                        <p style="margin: 0; color: #c62828;">⚠️ هذا التحديث إلزامي ويجب تثبيته للاستمرار في استخدام البرنامج.</p>
+                    </div>
+                }
+            </div>
+        }
+        else if (!isChecking && updateInfo == null)
+        {
+            <div class="no-updates" style="text-align: center; padding: 40px; background: #e3f2fd; border-radius: 8px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+                <h3 style="color: #1976d2;">التطبيق محدث لآخر إصدار</h3>
+                <p>أنت تستخدم أحدث نسخة من SoftPos</p>
+            </div>
+        }
+
+        @if (errorMessage != null)
+        {
+            <div class="error-message" style="background: #ffebee; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #f44336;">
+                <p style="margin: 0; color: #c62828;">❌ @errorMessage</p>
+            </div>
+        }
+
+        <div class="action-buttons" style="margin-top: 30px; display: flex; gap: 10px;">
+            <button @onclick="CheckForUpdates" disabled="@isChecking" class="btn btn-primary" style="padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #2196f3; color: white;">
+                🔄 فحص التحديثات مرة أخرى
+            </button>
+            <button @onclick="GoBack" class="btn btn-secondary" style="padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #757575; color: white;">
+                ← رجوع
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #2196f3;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed !important;
+    }
+
+    button:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+</style>
+
+@code {
+    private bool isChecking = false;
+    private bool isDownloading = false;
+    private bool downloadComplete = false;
+    private double downloadProgress = 0;
+    private UpdateInfo? updateInfo;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckForUpdates();
+    }
+
+    private async Task CheckForUpdates()
+    {
+        isChecking = true;
+        errorMessage = null;
+        updateInfo = null;
+        downloadComplete = false;
+        StateHasChanged();
+
+        try
+        {
+            updateInfo = await UpdateService.CheckForUpdates();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"حدث خطأ أثناء فحص التحديثات: {ex.Message}";
+        }
+
+        isChecking = false;
+        StateHasChanged();
+    }
+
+    private async Task DownloadUpdate()
+    {
+        if (updateInfo == null) return;
+
+        isDownloading = true;
+        downloadProgress = 0;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var downloadsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads"
+            );
+            
+            var fileName = $"SoftPos-Update-v{updateInfo.Version}.zip";
+            var savePath = Path.Combine(downloadsPath, fileName);
+
+            var progress = new Progress<double>(p =>
+            {
+                downloadProgress = p;
+                InvokeAsync(StateHasChanged);
+            });
+
+            var success = await UpdateService.DownloadUpdate(updateInfo.DownloadUrl, savePath, progress);
+
+            if (success)
+            {
+                downloadComplete = true;
+                UpdateService.OpenDownloadFolder(savePath);
+            }
+            else
+            {
+                errorMessage = "فشل تحميل التحديث. حاول مرة أخرى.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"حدث خطأ أثناء التحميل: {ex.Message}";
+        }
+
+        isDownloading = false;
+        StateHasChanged();
+    }
+
+    private void RemindLater()
+    {
+        // حفظ تاريخ التذكير (يوم واحد من الآن)
+        var remindDate = DateTime.Now.AddDays(1);
+        Preferences.Set("RemindUpdateLater", remindDate.ToString("o"));
+        GoBack();
+    }
+
+    private void GoBack()
+    {
+        // الرجوع للصفحة الرئيسية
+        Navigation.NavigateTo("/");
+    }
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+}

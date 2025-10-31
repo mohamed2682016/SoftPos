@@ -1,0 +1,382 @@
+﻿@page "/expense-category-ar"
+@inject ExpenseCategoryService expenseCategoryService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@using SoftPos.Data.InventoryModel
+
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4 class="text-primary fw-bold">إدارة فئات المصاريف</h4>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowModal">
+                <i class="fas fa-plus me-2"></i> إضافة فئة جديدة
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Category Type -->
+                        <div class="col-lg-3 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">نوع الفئة</label>
+                                <select class="form-control" @bind="SelectedCategoryType">
+                                    <option value="">جميع الأنواع</option>
+                                    <option value="Employee">مصاريف العمال</option>
+                                    <option value="Owner">مصاريف صاحب المحل</option>
+                                    <option value="Waste">هالك</option>
+                                    <option value="Other">أخرى</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="col-lg-3 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">الحالة</label>
+                                <select class="form-control" @bind="SelectedStatus">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="true">نشط</option>
+                                    <option value="false">غير نشط</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Search Button -->
+                        <div class="col-lg-2 col-sm-6 col-12 align-self-end">
+                            <button class="btn btn-primary w-100" @onclick="Filter">
+                                <i class="fas fa-search me-2"></i> بحث
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle">
+                        <thead class="table-primary">
+                            <tr>
+                                <th scope="col">اسم الفئة</th>
+                                <th scope="col">النوع</th>
+                                <th scope="col">الوصف</th>
+                                <th scope="col">الحالة</th>
+                                <th scope="col">تاريخ الإضافة</th>
+                                <th scope="col">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (listExpenseCategories == null || !listExpenseCategories.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <div>
+                                            <i class="fas fa-exclamation-circle fs-1 text-warning"></i>
+                                            <h5 class="mt-2">لا توجد بيانات</h5>
+                                            <p class="mb-2">لا توجد فئات مصاريف</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in listExpenseCategories)
+                                {
+                                    <tr>
+                                        <td>@item.CategoryName</td>
+                                        <td>
+                                            <span class="badge @GetCategoryTypeBadgeClass(item.CategoryType)">
+                                                @GetCategoryTypeText(item.CategoryType)
+                                            </span>
+                                        </td>
+                                        <td>@item.Description</td>
+                                        <td>
+                                            <span class="badge @(item.IsActive ? "bg-success" : "bg-danger")">
+                                                @(item.IsActive ? "نشط" : "غير نشط")
+                                            </span>
+                                        </td>
+                                        <td>@item.AddedDate.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" @onclick="() => Edit(item.ExpenseCategoryId)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-@(item.IsActive ? "warning" : "success")" @onclick="() => ToggleStatus(item.ExpenseCategoryId)">
+                                                    <i class="fas fa-@(item.IsActive ? "pause" : "play")"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => Delete(item.ExpenseCategoryId)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+@if (IsModalVisible)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@ModalTitle</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">اسم الفئة</label>
+                            <input type="text" class="form-control" @bind="expenseCategory.CategoryName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">نوع الفئة</label>
+                            <select class="form-control" @bind="expenseCategory.CategoryType">
+                                <option value="Employee">مصاريف العمال</option>
+                                <option value="Owner">مصاريف صاحب المحل</option>
+                                <option value="Waste">هالك</option>
+                                <option value="Other">أخرى</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">الوصف</label>
+                            <textarea class="form-control" rows="3" @bind="expenseCategory.Description"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" @bind="expenseCategory.IsActive" />
+                                <label class="form-check-label">نشط</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" @onclick="Save">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    List<ExpenseCategory> listExpenseCategories = new();
+    ExpenseCategory expenseCategory = new();
+    string SelectedCategoryType = "";
+    string SelectedStatus = "";
+    bool IsModalVisible = false;
+    string ModalTitle = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listExpenseCategories = await expenseCategoryService.GetAllExpenseCategoriesAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Filter()
+    {
+        try
+        {
+            var filteredList = listExpenseCategories.AsEnumerable();
+            
+            if (!string.IsNullOrEmpty(SelectedCategoryType))
+            {
+                filteredList = filteredList.Where(c => c.CategoryType == SelectedCategoryType);
+            }
+            
+            if (!string.IsNullOrEmpty(SelectedStatus))
+            {
+                bool isActive = SelectedStatus == "true";
+                filteredList = filteredList.Where(c => c.IsActive == isActive);
+            }
+
+            listExpenseCategories = filteredList.ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الفلترة: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ShowModal()
+    {
+        ModalTitle = "إضافة فئة جديدة";
+        await Reset();
+        IsModalVisible = true;
+    }
+
+    private async Task Reset()
+    {
+        expenseCategory = new ExpenseCategory
+        {
+            IsActive = true,
+            CategoryType = "Other"
+        };
+    }
+
+    private async Task Edit(int id)
+    {
+        try
+        {
+            ModalTitle = "تعديل الفئة";
+            expenseCategory = await expenseCategoryService.GetExpenseCategoryByIdAsync(id);
+            IsModalVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذه الفئة؟");
+            if (confirmed)
+            {
+                bool result = await expenseCategoryService.DeleteExpenseCategoryAsync(id);
+                if (result)
+                {
+                    Snackbar.Add("تم حذف الفئة بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("فشل في حذف الفئة - قد تكون مستخدمة في مصاريف", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الحذف: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ToggleStatus(int id)
+    {
+        try
+        {
+            bool result = await expenseCategoryService.ToggleExpenseCategoryStatusAsync(id);
+            if (result)
+            {
+                Snackbar.Add("تم تغيير حالة الفئة بنجاح", Severity.Success);
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("فشل في تغيير حالة الفئة", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تغيير الحالة: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(expenseCategory.CategoryName))
+            {
+                Snackbar.Add("يرجى إدخال اسم الفئة", Severity.Warning);
+                return;
+            }
+
+            int result;
+            if (expenseCategory.ExpenseCategoryId == 0)
+            {
+                result = await expenseCategoryService.AddExpenseCategoryAsync(expenseCategory);
+                if (result > 0)
+                {
+                    Snackbar.Add("تم إضافة الفئة بنجاح", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("فشل في إضافة الفئة - قد تكون موجودة مسبقاً", Severity.Error);
+                }
+            }
+            else
+            {
+                bool updateResult = await expenseCategoryService.UpdateExpenseCategoryAsync(expenseCategory);
+                if (updateResult)
+                {
+                    Snackbar.Add("تم تحديث الفئة بنجاح", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("فشل في تحديث الفئة - قد يكون الاسم موجود مسبقاً", Severity.Error);
+                }
+            }
+
+            CloseModal();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الحفظ: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        IsModalVisible = false;
+    }
+
+    private string GetCategoryTypeText(string categoryType)
+    {
+        return categoryType switch
+        {
+            "Employee" => "مصاريف العمال",
+            "Owner" => "مصاريف صاحب المحل",
+            "Waste" => "هالك",
+            "Other" => "أخرى",
+            _ => categoryType
+        };
+    }
+
+    private string GetCategoryTypeBadgeClass(string categoryType)
+    {
+        return categoryType switch
+        {
+            "Employee" => "bg-success",
+            "Owner" => "bg-warning",
+            "Waste" => "bg-danger",
+            "Other" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+}

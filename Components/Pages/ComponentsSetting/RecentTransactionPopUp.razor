@@ -1,0 +1,153 @@
+﻿@inject SalesInvoiceService salesinvoiceService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+<div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-money-bill-transfer me-2"></i> المعاملات الأخيرة
+                </h5>
+
+                <button type="button" class="btn-close" @onclick="CloseModal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <MudTable Items="listSalesInvoice" Dense="dense" Hover="hover">
+                        <HeaderContent>
+                            <MudTh>التاريخ</MudTh>
+                            <MudTh>رقم الفاتورة</MudTh>
+                            <MudTh>اسم العميل</MudTh>
+                            <MudTh>المبلغ</MudTh>
+                            <MudTh>المبلغ المستحق</MudTh>
+                            <MudTh>الحالة</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="التاريخ">@context.Date</MudTd>
+                            <MudTd DataLabel="رقم الفاتورة">@context.VoucherNo</MudTd>
+                            <MudTd DataLabel="اسم العميل">@context.LedgerName</MudTd>
+                            <MudTd DataLabel="المبلغ">@context.GrandTotal</MudTd>
+                            <MudTd DataLabel="المبلغ المستحق">@context.BalanceDue</MudTd>
+                            <MudTd DataLabel="الحالة">@context.Status</MudTd>
+                            <MudTd DataLabel="">
+                                <!-- Dropdown Actions -->
+                                <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-bars me-1"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" @onclick="()=>ViewInvoice(context.SalesMasterId)">
+                                        <i class="fas fa-file-invoice"></i> عرض الفاتورة
+                                    </a>
+                                    <a class="dropdown-item" @onclick="()=>Edit(context.SalesMasterId)">
+                                        <i class="fas fa-edit"></i> تعديل
+                                    </a>
+                                    <a class="dropdown-item text-danger" @onclick="() => Delete(context)">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </a>
+                                </div>
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager />
+                        </PagerContent>
+                    </MudTable>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsModalVisiblePrint)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.PrintThermalPrint id="selectedInvoiceId" OnButtonClick="PrintButtonClick" />
+}
+
+@code {
+        [Parameter] public EventCallback<int> OnButtonClick { get; set; }
+    private bool dense = true;
+    private bool hover = true;
+    private List<SalesMasterView> listSalesInvoice = new();
+    private bool IsModalVisiblePrint = false;
+    private int selectedInvoiceId = 0;
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listSalesInvoice = await salesinvoiceService.GetRecentTransaction();
+            // ترتيب العمليات من الأحدث للأقدم
+            listSalesInvoice = listSalesInvoice.OrderByDescending(x => x.Date).ThenByDescending(x => x.SalesMasterId).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task ViewInvoice(int id)
+    {
+        try
+        {
+            selectedInvoiceId = id;
+            IsModalVisiblePrint = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    private async Task Edit(int id)
+    {
+        try
+        {
+            await OnButtonClick.InvokeAsync(id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    private async void PrintButtonClick(int intId)
+    {
+        IsModalVisiblePrint = false;
+        StateHasChanged();
+    }
+    private async Task Delete(SalesMasterView view)
+    {
+        try
+        {
+            // Show a confirmation dialog
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذه الفاتورة؟");
+            if (!confirmed) return;
+
+            // Attempt to delete the sales
+            bool isDeleted = await salesinvoiceService.DeleteSalesInvoiceAsync(view);
+
+            if (isDeleted)
+            {
+                Snackbar.Add("تم حذف الفاتورة بنجاح.", Severity.Success);
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف هذه الفاتورة لأنها قيد الاستخدام.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف الفاتورة: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task CloseModal()
+    {
+        await OnButtonClick.InvokeAsync(0);
+    }
+}

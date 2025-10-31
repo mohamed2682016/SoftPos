@@ -1,0 +1,10 @@
+@page "/test/details/{id:int}"
+
+<h3>Test Details Page</h3>
+<p>ID: @id</p>
+<p>This is a test page to verify routing works.</p>
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+}

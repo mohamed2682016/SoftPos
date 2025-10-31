@@ -1,0 +1,216 @@
+﻿@page "/unit-ar"
+@inject UnitService UnitService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>الوحدات</h4>
+        </div>
+        <div class="col text-start">
+            <button class="btn btn-primary" @onclick="ShowModal">
+                <i class="fas fa-plus me-2"></i> إضافة وحدة
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col">
+            <div class="table-responsive">
+                <MudTable Items="@listUnit" Dense="@dense" Hover="@hover">
+
+                    <HeaderContent>
+                        <MudTh>اسم الوحدة</MudTh>
+                        <MudTh>عدد الخانات العشرية</MudTh>
+                        <MudTh>الإجراءات</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="UnitName" Style="width:900px;">@context.UnitName</MudTd>
+                        <MudTd DataLabel="NoOfDecimalplaces">@context.NoOfDecimalplaces</MudTd>
+                        <MudTd DataLabel="">
+                            <div class="d-flex justify-content-start">
+                                <button class="btn btn-warning btn-sm me-2" @onclick="() => Edit(context.UnitId)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => Delete(context.UnitId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    @if (IsModalVisible)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+            <div class="modal-dialog">
+                <EditForm Model="Unit" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">@ModalTitle</h5>
+                            <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="UnitName" class="form-label">اسم الوحدة</label>
+                                <input type="text" id="UnitName" class="form-control" @bind="Unit.UnitName" placeholder="أدخل اسم الوحدة">
+                                <ValidationMessage For="@(() => Unit.UnitName)" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="subUnits" class="form-label">عدد الخانات العشرية</label>
+                                <input type="number" id="subUnits" class="form-control" @bind="Unit.NoOfDecimalplaces" placeholder="أدخل عدد الخانات العشرية">
+                                <ValidationMessage For="@(() => Unit.NoOfDecimalplaces)" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ</button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private Unit Unit = new();
+    private List<Unit> listUnit = new();
+    private bool IsModalVisible = false;
+    private string ModalTitle = "إضافة وحدة";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listUnit = await UnitService.GetAllUnitsAsync();
+            await Reset();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task Reset()
+    {
+        IsModalVisible = false;
+        Unit.UnitId = 0;
+        Unit.UnitName = string.Empty;
+        Unit.NoOfDecimalplaces = 0;
+        Unit.AddedDate = DateTimeHelper.Now;
+    }
+
+    private async Task ShowModal()
+    {
+        ModalTitle = "إضافة وحدة";
+        await Reset();
+        IsModalVisible = true;
+    }
+
+    private async Task Edit(int id)
+    {
+        try
+        {
+            ModalTitle = "تعديل الوحدة";
+            Unit = await UnitService.GetUnitByIdAsync(id);
+            IsModalVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في جلب الوحدة: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            // Show a confirmation dialog to the user
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذه الوحدة؟");
+
+            if (!confirmed)
+            {
+                return; // User canceled the action
+            }
+
+            // Attempt to delete the Unit
+            bool isDeleted = await UnitService.DeleteUnitAsync(id);
+
+            if (isDeleted == true)
+            {
+                Snackbar.Add("تم حذف الوحدة بنجاح.", Severity.Success);
+                await LoadData(); // Reload the data after successful deletion
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف الوحدة لأنها مستخدمة في العمليات.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف الوحدة: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private async Task CloseModal()
+    {
+        IsModalVisible = false;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (Unit.UnitId == 0)
+            {
+                int value = await UnitService.AddUnitAsync(Unit);
+                if(value > 0)
+                {
+                    Snackbar.Add("تم إنشاء الوحدة بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("اسم الوحدة موجود مسبقاً.", Severity.Info);
+                }
+            }
+            else
+            {
+               bool isUpdated = await UnitService.UpdateUnitAsync(Unit);
+                if (isUpdated == true)
+                {
+                    Snackbar.Add("تم تحديث الوحدة بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("اسم الوحدة موجود مسبقاً.", Severity.Info);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في حفظ الوحدة: {ex.Message}", Severity.Error);
+        }
+    }
+}

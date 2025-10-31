@@ -1,0 +1,240 @@
+﻿@page "/warehouse-ar"
+@inject WarehouseService warehouseService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>المستودعات</h4>
+        </div>
+        <div class="col text-start">
+            <button class="btn btn-primary" @onclick="ShowModal">
+                <i class="fas fa-plus me-2"></i> إضافة مستودع
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col">
+            <div class="table-responsive">
+                <MudTable Items="@listWarehouse" Dense="@dense" Hover="@hover">
+
+                    <HeaderContent>
+                        <MudTh>الاسم</MudTh>
+                        <MudTh>البريد الإلكتروني</MudTh>
+                        <MudTh>الجوال</MudTh>
+                        <MudTh>المدينة</MudTh>
+                        <MudTh>البلد</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Name" Style="width:900px;">@context.Name</MudTd>
+                        <MudTd DataLabel="Email">@context.Email</MudTd>
+                        <MudTd DataLabel="Mobile">@context.Mobile</MudTd>
+                        <MudTd DataLabel="City">@context.City</MudTd>
+                        <MudTd DataLabel="Country">@context.Country</MudTd>
+                        <MudTd DataLabel="">
+                            <div class="d-flex justify-content-start">
+                                <button class="btn btn-warning btn-sm me-2" @onclick="() => Edit(context.WarehouseId)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => Delete(context.WarehouseId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    @if (IsModalVisible)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+            <div class="modal-dialog">
+                <EditForm Model="warehouse" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">@ModalTitle</h5>
+                            <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">الاسم</label>
+                                <input type="text" class="form-control" @bind="warehouse.Name" placeholder="أدخل اسم المستودع">
+                                <ValidationMessage For="@(() => warehouse.Name)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">الجوال</label>
+                                <input type="text" class="form-control" @bind="warehouse.Mobile" placeholder="أدخل رقم الجوال">
+                                <ValidationMessage For="@(() => warehouse.Mobile)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">البريد الإلكتروني</label>
+                                <input type="text" class="form-control" @bind="warehouse.Email" placeholder="أدخل البريد الإلكتروني">
+                                <ValidationMessage For="@(() => warehouse.Email)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">البلد</label>
+                                <input type="text" class="form-control" @bind="warehouse.Country" placeholder="أدخل البلد">
+                                <ValidationMessage For="@(() => warehouse.Country)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">المدينة</label>
+                                <input type="text" class="form-control" @bind="warehouse.City" placeholder="أدخل المدينة">
+                                <ValidationMessage For="@(() => warehouse.City)" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ</button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private Warehouse warehouse = new();
+    private List<Warehouse> listWarehouse = new();
+    private bool IsModalVisible = false;
+    private string ModalTitle = "إضافة مستودع";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listWarehouse = await warehouseService.GetAllWarehousesAsync();
+            await Reset();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task Reset()
+    {
+        IsModalVisible = false;
+        warehouse.WarehouseId = 0;
+        warehouse.Name = string.Empty;
+        warehouse.Mobile = string.Empty;
+        warehouse.Email = string.Empty;
+        warehouse.City = string.Empty;
+        warehouse.Country = string.Empty;
+        warehouse.AddedDate = DateTimeHelper.Now;
+    }
+
+    private async Task ShowModal()
+    {
+        ModalTitle = "إضافة مستودع";
+        await Reset();
+        IsModalVisible = true;
+    }
+
+    private async Task Edit(int id)
+    {
+        try
+        {
+            ModalTitle = "تعديل المستودع";
+            warehouse = await warehouseService.GetWarehouseByIdAsync(id);
+            IsModalVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في جلب المستودع: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            // Show a confirmation dialog to the user
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذا المستودع؟");
+
+            if (!confirmed)
+            {
+                return; // User canceled the action
+            }
+
+            // Attempt to delete the Tax
+            bool isDeleted = await warehouseService.DeleteWarehouseAsync(id);
+
+            if (isDeleted == true)
+            {
+                Snackbar.Add("تم حذف المستودع بنجاح.", Severity.Success);
+                await LoadData(); // Reload the data after successful deletion
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف المستودع لأنه مستخدم في العمليات.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف المستودع: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private async Task CloseModal()
+    {
+        IsModalVisible = false;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (warehouse.WarehouseId == 0)
+            {
+                int value = await warehouseService.AddWarehouseAsync(warehouse);
+                if(value > 0)
+                {
+                    Snackbar.Add("تم إنشاء المستودع بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("اسم المستودع موجود مسبقاً.", Severity.Info);
+                }
+            }
+            else
+            {
+                bool isUpdated = await warehouseService.UpdateWarehouseAsync(warehouse);
+                if (isUpdated == true)
+                {
+                    Snackbar.Add("تم تحديث المستودع بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("اسم المستودع موجود مسبقاً.", Severity.Info);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في حفظ المستودع: {ex.Message}", Severity.Error);
+        }
+    }
+}

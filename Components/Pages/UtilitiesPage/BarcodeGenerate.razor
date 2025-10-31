@@ -1,0 +1,334 @@
+﻿@page "/barcode"
+@using SoftPos.Utilities
+@using SoftPos.Resources
+@inject IPrintingService PrintingService
+@inject ProductService productService
+@inject CompanyService companyService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+<div class="container mt-4">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>إنشاء الباركود</h4>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="card">
+        <div class="card-body">
+            <!-- Print Button -->
+            <div class="row mb-3 hidden-print">
+                <div class="col-lg-12">
+                    <button class="btn btn-sm btn-success" @onclick="@(_ => PrintingService.Print("printable-form", PrintType.Html))">
+                        <i class="fas fa-print me-1"></i> @CommonTranslations.Print
+                    </button>
+                    <button class="btn btn-sm btn-danger" @onclick="()=>PrintDiv()">
+                        <i class="fas fa-file-pdf me-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Product Selection -->
+            <div class="row mb-3">
+                <div class="form-group">
+                    <label for="productSelect">@CommonTranslations.ProductName</label>
+                    <select id="productSelect" class="form-select" @bind="@searchValue" @onclick="()=>OnChange()">
+                        <option value="0">اختر منتج</option>
+                        @if (listProduct != null)
+                        {
+                            @foreach (var item in listProduct)
+                            {
+                                <option value="@item.ProductId">@item.ProductName</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Product List Table -->
+            <div class="table-responsive table-height mb-4">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>@CommonTranslations.Quantity</th>
+                            <th>@CommonTranslations.Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!TodoList.Any())
+                        {
+                            <tr>
+                                <td colspan="3" class="text-center">
+                                    <div class="mt-4">
+                                        <img src="img/noimage.png" alt="لا توجد منتجات" />
+                                        <h6 class="mt-2">أضف منتج</h6>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in TodoList)
+                            {
+                                <tr>
+                                    <td style="width:300px;">@item.ProductName</td>
+                                    <td>
+                                        <input type="number" class="form-control" @bind-value="item.Qty" style="width: 100px;" />
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-link text-danger" @onclick="() => DeleteItem(item.Id)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Barcode Generation and Display -->
+            <form id="printable-form">
+                <div class="row">
+                    @if (TodoList != null)
+                    {
+                        @foreach (var item in TodoList)
+                        {
+                            <div class="col-lg-3 col-sm-6 col-12">
+                                @for (var i = 1; i <= item.Qty; i++)
+                                {
+                                    <div class="barcode-container mt-4">
+                                        @{
+                                            // Generate the barcode Base64 string
+                                            string barcodeBase64 = GenerateBarcode(item.Barcode);
+                                        }
+                                        @if (!string.IsNullOrEmpty(barcodeBase64))
+                                        {
+                                            <img src="data:image/png;base64,@barcodeBase64" alt="Generated Barcode" class="img-fluid" />
+                                        }
+                                        else
+                                        {
+                                            <div class="alert alert-warning" style="padding: 10px; margin: 5px 0;">
+                                                <small>
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    Failed to generate barcode for: <strong>@item.ProductName</strong>
+                                                    @if (!string.IsNullOrEmpty(item.Barcode))
+                                                    {
+                                                        <br />
+                                                        <text>Barcode: </text>
+                                                        <span style="font-family: monospace; background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">@item.Barcode</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <br /><span class="text-danger">No barcode data available</span>
+                                                    }
+                                                </small>
+                                            </div>
+                                        }
+                                        @if (isProduct)
+                                        {
+                                            <div style="font-size:14px;text-align:center;" id="barcode_text">@item.ProductName</div>
+                                        }
+                                        @if (isRate)
+                                        {
+                                            <div style="font-size:13px;text-align:center;" id="barcode_text">السعر: @item.SalesRate</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+
+            </form>
+
+            <!-- Checkboxes for Product and Rate -->
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="productCheckbox" @bind="isProduct" @onclick="CheckProduct">
+                <label for="productCheckbox">@CommonTranslations.ProductName</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="rateCheckbox" @bind="isRate" @onclick="CheckRate">
+                <label for="rateCheckbox">سعر المنتج</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Models and Variables
+    ProductView product = new ProductView();
+    int editedID = 0;
+    List<ProductView> TodoList = new List<ProductView>();
+    List<ProductView> listProduct;
+    private int searchValue = 0;
+    CompanyView company = new CompanyView();
+    bool isProduct = true;
+    bool isRate = true;
+
+    // Load Data on Initialization
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // Generate Barcode
+    private string GenerateBarcode(string strBarcode)
+    {
+        if (string.IsNullOrWhiteSpace(strBarcode))
+        {
+            Console.WriteLine("BarcodeGenerate: Barcode string is null or empty");
+            return string.Empty;
+        }
+
+        try
+        {
+            // Call the BarcodeService to generate the barcode
+            var result = BarcodeService.GenerateBarcode(strBarcode);
+            
+            if (string.IsNullOrEmpty(result))
+            {
+                Console.WriteLine($"BarcodeGenerate: Failed to generate barcode for: {strBarcode}");
+                Snackbar.Add($"Failed to generate barcode for: {strBarcode}", MudBlazor.Severity.Warning);
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"BarcodeGenerate: Exception generating barcode for '{strBarcode}': {ex.Message}");
+            Snackbar.Add($"Error generating barcode: {ex.Message}", MudBlazor.Severity.Error);
+            return string.Empty;
+        }
+    }
+
+
+    // Load Products and Company Data
+    private async Task LoadData()
+    {
+        company = await companyService.GetAllCompaniesByIdAsync(1);
+        listProduct = await productService.GetAllProductsAsync();
+        StateHasChanged();
+    }
+    private async void OnChange()
+    {
+        var myTodo = listProduct.FirstOrDefault(x => x.ProductId == searchValue);
+        if (myTodo != null)
+        {
+            foreach (var item in TodoList)
+            {
+                if (myTodo.ProductId == item.ProductId)
+                {
+                    Snackbar.Add("This product is already added", MudBlazor.Severity.Warning);
+                    return;
+                }
+            }
+
+            // Check if product has barcode
+            if (string.IsNullOrWhiteSpace(myTodo.Barcode))
+            {
+                // Generate a barcode automatically
+                var barcodeNumberService = new BarcodeNumberService();
+                myTodo.Barcode = barcodeNumberService.GenerateBarcodeNumber();
+                Snackbar.Add($"Auto-generated barcode for '{myTodo.ProductName}': {myTodo.Barcode}", MudBlazor.Severity.Info);
+            }
+
+            product.ProductId = myTodo.ProductId;
+            product.Barcode = myTodo.Barcode;
+            product.ProductName = myTodo.ProductName;
+            product.SalesRate = myTodo.SalesRate;
+            product.Qty = 1;
+            //Addtolist
+            AddToList();
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add("Please select a valid product", MudBlazor.Severity.Warning);
+        }
+    }
+    private async void AddToList()
+    {
+        if (product.ProductId == 0)
+        {
+            //ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "", Detail = localizer["Invalid Product"], Duration = 3000 });
+            return;
+        }
+        else
+        {
+            if (editedID == 0)
+            {
+                var myTodoItem = new ProductView()
+                    {
+                        Id = TodoList.Count() + 1,
+                        ProductId = product.ProductId,
+                        ProductName = product.ProductName,
+                        Barcode = product.Barcode,
+                        Qty = product.Qty,
+                        SalesRate = product.SalesRate
+
+                    };
+                TodoList.Add(myTodoItem);
+                product.ProductId = 0;
+                product.ProductName = string.Empty;
+                product.Barcode = string.Empty;
+                product.Qty = 0;
+                product.SalesRate = 0;
+            }
+            else
+            {
+                var myTodos = TodoList.FirstOrDefault(x => x.ProductId == editedID);
+                myTodos.ProductId = product.ProductId;
+                myTodos.Qty = product.Qty;
+                myTodos.ProductName = product.ProductName;
+                myTodos.Barcode = product.Barcode;
+                myTodos.SalesRate = product.SalesRate;
+                product.ProductName = string.Empty;
+                product.ProductId = 0;
+                product.Barcode = string.Empty;
+                product.SalesRate = 0;
+                editedID = 0;
+            }
+        }
+        StateHasChanged();
+    }
+    void editItem(int id)
+    {
+        var myTodo = TodoList.FirstOrDefault(x => x.ProductId == id);
+        product.ProductId = myTodo.ProductId;
+        product.Barcode = myTodo.Barcode;
+        product.ProductName = myTodo.ProductName;
+        product.Qty = myTodo.Qty;
+        product.SalesRate = myTodo.SalesRate;
+        editedID = id;
+        AddToList();
+    }
+    // Delete Product from TodoList
+    private void DeleteItem(int id)
+    {
+        var productToRemove = TodoList.FirstOrDefault(x => x.Id == id);
+        if (productToRemove != null)
+        {
+            TodoList.Remove(productToRemove);
+            StateHasChanged();
+        }
+    }
+    // Toggle Product Name Checkbox
+    private void CheckProduct()
+    {
+        isProduct = !isProduct;
+    }
+    // Toggle Product Rate Checkbox
+    private void CheckRate()
+    {
+        isRate = !isRate;
+    }
+    private async Task PrintDiv()
+    {
+        await JsRuntime.InvokeVoidAsync("printDiv", "printable-form");
+    }
+}

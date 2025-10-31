@@ -1,0 +1,10 @@
+{
+  "Version": "1.0.1",
+  "ReleaseDate": "2025-10-30",
+  "DownloadUrl": "https://github.com/YOUR_USERNAME/SoftPos/releases/download/v1.0.1/SoftPos-v1.0.1.zip",
+  "FileSize": "450 MB",
+  "ReleaseNotes": "## What's New in v1.0.1\n\n### ✨ New Features\n- Self-contained deployment with .NET Runtime included\n- No installation required - just extract and run\n- Improved performance and stability\n- Enhanced Arabic language support\n\n### 🐛 Bug Fixes\n- Fixed database connection issues\n- Fixed printing problems\n- Fixed UI rendering issues\n- Improved error handling\n\n### 📦 Package Information\n- Self-contained package includes all dependencies\n- Works on Windows 10 (1809+) and Windows 11\n- No .NET Runtime installation needed",
+  "ReleaseNotesAr": "## الجديد في الإصدار 1.0.1\n\n### ✨ المميزات الجديدة\n- نسخة مستقلة تحتوي على .NET Runtime مدمج\n- لا يحتاج تثبيت - فقط فك الضغط والتشغيل\n- تحسينات في الأداء والاستقرار\n- تحسين دعم اللغة العربية\n\n### 🐛 إصلاح الأخطاء\n- إصلاح مشاكل الاتصال بقاعدة البيانات\n- إصلاح مشاكل الطباعة\n- إصلاح مشاكل عرض الواجهة\n- تحسين معالجة الأخطاء\n\n### 📦 معلومات الحزمة\n- الحزمة المستقلة تحتوي على جميع المكتبات المطلوبة\n- تعمل على Windows 10 (1809+) و Windows 11\n- لا يحتاج تثبيت .NET Runtime",
+  "Mandatory": false,
+  "MinVersion": "1.0.0"
+}

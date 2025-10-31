@@ -1,0 +1,95 @@
+@page "/report-ar"
+<div class="container mt-4" dir="rtl">
+    <!-- Page Header -->
+    <div class="section mb-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="page-header">
+                    <h4 class="mb-2">التقارير</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Section -->
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-4">
+                <!-- Accounting Reports -->
+                <div class="col-lg-6 col-sm-12">
+                    <div class="p-3 border rounded shadow-sm">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-calculator text-primary me-3 fs-4"></i>
+                            <h5 class="mb-0">تقارير المحاسبة والحسابات</h5>
+                        </div>
+                        <ul class="list-unstyled">
+                            <li><a href="/report/day_book" class="text-primary"><i class="fas fa-angle-left me-2"></i>دفتر اليومية</a></li>
+                            <li><a href="/report/trail_balance" class="text-primary"><i class="fas fa-angle-left me-2"></i>ميزان المراجعة</a></li>
+                            <li><a href="/report/ledger-report" class="text-primary"><i class="fas fa-angle-left me-2"></i>دفتر الأستاذ</a></li>
+                            <li><a href="/report/balance-sheet" class="text-primary"><i class="fas fa-angle-left me-2"></i>الميزانية العمومية</a></li>
+                            <li><a href="/report/profit_loss" class="text-primary"><i class="fas fa-angle-left me-2"></i>الأرباح والخسائر</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Purchase Reports -->
+                <div class="col-lg-6 col-sm-12">
+                    <div class="p-3 border rounded shadow-sm">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-shopping-cart text-warning me-3 fs-4"></i>
+                            <h5 class="mb-0">تقارير المشتريات</h5>
+                        </div>
+                        <ul class="list-unstyled">
+                            <li><a href="/report/purchase-by-supplier" class="text-warning"><i class="fas fa-angle-left me-2"></i>المشتريات (حسب المورد)</a></li>
+                            <li><a href="/report/purchase-by-item" class="text-warning"><i class="fas fa-angle-left me-2"></i>المشتريات (حسب الصنف)</a></li>
+                            <li><a href="/report/supplier-payable-summary" class="text-warning"><i class="fas fa-angle-left me-2"></i>ملخص مستحقات الموردين</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Sales Reports -->
+                <div class="col-lg-6 col-sm-12">
+                    <div class="p-3 border rounded shadow-sm">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-chart-line text-success me-3 fs-4"></i>
+                            <h5 class="mb-0">تقارير المبيعات</h5>
+                        </div>
+                        <ul class="list-unstyled">
+                            <li><a href="/report/sales-by-customer" class="text-success"><i class="fas fa-angle-left me-2"></i>المبيعات (حسب العميل)</a></li>
+                            <li><a href="/report/sales-item" class="text-success"><i class="fas fa-angle-left me-2"></i>المبيعات (حسب الصنف)</a></li>
+                            <li><a href="/report/customer-receive-summary" class="text-success"><i class="fas fa-angle-left me-2"></i>ملخص مقبوضات العملاء</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Stock Reports -->
+                <div class="col-lg-6 col-sm-12">
+                    <div class="p-3 border rounded shadow-sm">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-boxes text-info me-3 fs-4"></i>
+                            <h5 class="mb-0">تقارير المخزون</h5>
+                        </div>
+                        <ul class="list-unstyled">
+                            <li><a href="/report/stock" class="text-info"><i class="fas fa-angle-left me-2"></i>تقرير المخزون</a></li>
+                            <li><a href="/expired-products" class="text-info"><i class="fas fa-angle-left me-2"></i>المنتجات المنتهية الصلاحية</a></li>
+                            <li><a href="/expiring-products" class="text-info"><i class="fas fa-angle-left me-2"></i>المنتجات قاربة الانتهاء</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Additional Reports -->
+                <div class="col-lg-6 col-sm-12">
+                    <div class="p-3 border rounded shadow-sm">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-chart-bar text-secondary me-3 fs-4"></i>
+                            <h5 class="mb-0">تقارير إضافية</h5>
+                        </div>
+                        <ul class="list-unstyled">
+                            <li class="text-muted"><i class="fas fa-angle-left me-2"></i>قريباً - تقارير إضافية</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

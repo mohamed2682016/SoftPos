@@ -1,0 +1,55 @@
+﻿@page "/backup"
+@inject BackupRestoreService BackupRestoreService
+@using SoftPos.Resources
+
+<div class="container mt-4">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4 class="text-primary">النسخ الاحتياطي والاستعادة</h4>
+            <p class="text-muted">قم بعمل نسخة احتياطية واستعادة قاعدة البيانات بسهولة من هذه الواجهة.</p>
+        </div>
+    </div>
+
+    <!-- Card Section -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <!-- Backup and Restore Buttons -->
+            <div class="row mb-3 text-center">
+                <div class="col-12 col-md-6 mb-3">
+                    <button class="btn btn-primary w-100" @onclick="BackupDatabase">
+                        <i class="bi bi-cloud-upload"></i> نسخ احتياطي لقاعدة البيانات
+                    </button>
+                </div>
+                <div class="col-12 col-md-6">
+                    <button class="btn btn-success w-100" @onclick="RestoreDatabase">
+                        <i class="bi bi-cloud-download"></i> استعادة قاعدة البيانات
+                    </button>
+                </div>
+            </div>
+
+            <!-- Instruction Section -->
+            <div class="row">
+                <div class="col text-center">
+                    <p class="text-muted">
+                        تأكد من الاحتفاظ بملفات النسخ الاحتياطي في مكان آمن لمنع فقدان البيانات.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string DbPath = Path.Combine(FileSystem.AppDataDirectory, "SoftPos.db3");
+
+    private async Task BackupDatabase()
+    {
+        await BackupRestoreService.BackupDatabase(DbPath);
+    }
+
+    private async Task RestoreDatabase()
+    {
+        await BackupRestoreService.RestoreDatabase(DbPath);
+    }
+}

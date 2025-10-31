@@ -1,0 +1,521 @@
+﻿@page "/expense-report-ar"
+@inject ExpenseService expenseService
+@inject ExpenseCategoryService expenseCategoryService
+@inject WasteService wasteService
+@inject ProductService productService
+@inject MudBlazor.ISnackbar Snackbar
+@using SoftPos.Data.InventoryModel
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4 class="text-primary fw-bold">تقرير المصاريف والهالك</h4>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-success" @onclick="ExportToExcel">
+                <i class="fas fa-file-excel me-2"></i> تصدير إلى Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- From Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">من تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="FromDate" />
+                            </div>
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">إلى تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="ToDate" />
+                            </div>
+                        </div>
+
+                        <!-- Report Type -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">نوع التقرير</label>
+                                <select class="form-control" @bind="SelectedReportType">
+                                    <option value="All">الكل</option>
+                                    <option value="Expenses">المصاريف فقط</option>
+                                    <option value="Waste">الهالك فقط</option>
+                                    <option value="Summary">ملخص</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <div class="col-lg-2 col-sm-6 col-12 align-self-end">
+                            <button class="btn btn-primary w-100" @onclick="GenerateReport">
+                                <i class="fas fa-chart-bar me-2"></i> توليد التقرير
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">إجمالي المصاريف</h6>
+                            <h4>@TotalExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-money-bill-wave fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">إجمالي الهالك</h6>
+                            <h4>@TotalWaste.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-trash fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">مصاريف العمال</h6>
+                            <h4>@EmployeeExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">مصاريف صاحب المحل</h6>
+                            <h4>@OwnerExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-tie fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses by Category Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">المصاريف حسب الفئة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>الفئة</th>
+                                    <th>النوع</th>
+                                    <th>المبلغ</th>
+                                    <th>النسبة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (expensesByCategory != null && expensesByCategory.Any())
+                                {
+                                    @foreach (var item in expensesByCategory)
+                                    {
+                                        <tr>
+                                            <td>@item.CategoryName</td>
+                                            <td>
+                                                <span class="badge @GetExpenseTypeBadgeClass(item.ExpenseType)">
+                                                    @GetExpenseTypeText(item.ExpenseType)
+                                                </span>
+                                            </td>
+                                            <td><strong>@item.Amount.ToString("F2")</strong></td>
+                                            <td>@item.Percentage.ToString("F1")%</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">لا توجد بيانات</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waste by Type Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">الهالك حسب النوع</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>نوع الهالك</th>
+                                    <th>المبلغ</th>
+                                    <th>النسبة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (wasteByType != null && wasteByType.Any())
+                                {
+                                    @foreach (var item in wasteByType)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge @GetWasteTypeBadgeClass(item.WasteType)">
+                                                    @GetWasteTypeText(item.WasteType)
+                                                </span>
+                                            </td>
+                                            <td><strong>@item.Amount.ToString("F2")</strong></td>
+                                            <td>@item.Percentage.ToString("F1")%</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">لا توجد بيانات</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Report -->
+    @if (SelectedReportType == "All" || SelectedReportType == "Expenses")
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">تفاصيل المصاريف</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>اسم المصروف</th>
+                                        <th>النوع</th>
+                                        <th>الفئة</th>
+                                        <th>المبلغ</th>
+                                        <th>التاريخ</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (listExpenses != null && listExpenses.Any())
+                                    {
+                                        @foreach (var item in listExpenses)
+                                        {
+                                            <tr>
+                                                <td>@item.ExpenseName</td>
+                                                <td>
+                                                    <span class="badge @GetExpenseTypeBadgeClass(item.ExpenseType)">
+                                                        @GetExpenseTypeText(item.ExpenseType)
+                                                    </span>
+                                                </td>
+                                                <td>@GetCategoryName(item.ExpenseCategoryId)</td>
+                                                <td><strong>@item.Amount.ToString("F2")</strong></td>
+                                                <td>@item.ExpenseDate.ToString("dd/MM/yyyy")</td>
+                                                <td>
+                                                    <span class="badge @(item.IsApproved ? "bg-success" : "bg-warning")">
+                                                        @(item.IsApproved ? "معتمد" : "غير معتمد")
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">لا توجد بيانات</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (SelectedReportType == "All" || SelectedReportType == "Waste")
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">تفاصيل الهالك</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>المنتج</th>
+                                        <th>الكمية</th>
+                                        <th>سعر الوحدة</th>
+                                        <th>المجموع</th>
+                                        <th>نوع الهالك</th>
+                                        <th>التاريخ</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (listWaste != null && listWaste.Any())
+                                    {
+                                        @foreach (var item in listWaste)
+                                        {
+                                            <tr>
+                                                <td>@GetProductName(item.ProductId)</td>
+                                                <td>@item.Quantity.ToString("F2")</td>
+                                                <td>@item.UnitPrice.ToString("F2")</td>
+                                                <td><strong>@item.TotalAmount.ToString("F2")</strong></td>
+                                                <td>
+                                                    <span class="badge @GetWasteTypeBadgeClass(item.WasteType)">
+                                                        @GetWasteTypeText(item.WasteType)
+                                                    </span>
+                                                </td>
+                                                <td>@item.WasteDate.ToString("dd/MM/yyyy")</td>
+                                                <td>
+                                                    <span class="badge @(item.IsApproved ? "bg-success" : "bg-warning")">
+                                                        @(item.IsApproved ? "معتمد" : "غير معتمد")
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">لا توجد بيانات</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    List<Expense> listExpenses = new();
+    List<Waste> listWaste = new();
+    List<ExpenseCategory> listExpenseCategories = new();
+    List<ProductView> listProducts = new();
+    List<ExpenseCategorySummary> expensesByCategory = new();
+    List<WasteTypeSummary> wasteByType = new();
+    DateTime FromDate = DateTimeHelper.Now.AddDays(-30);
+    DateTime ToDate = DateTimeHelper.Now;
+    string SelectedReportType = "All";
+    decimal TotalExpenses = 0;
+    decimal TotalWaste = 0;
+    decimal EmployeeExpenses = 0;
+    decimal OwnerExpenses = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listExpenseCategories = await expenseCategoryService.GetAllExpenseCategoriesAsync();
+            listProducts = await productService.GetAllProductsAsync();
+            await GenerateReport();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task GenerateReport()
+    {
+        try
+        {
+            // Load expenses
+            listExpenses = await expenseService.GetExpensesByDateRangeAsync(FromDate, ToDate);
+            
+            // Load waste
+            listWaste = await wasteService.GetWasteByDateRangeAsync(FromDate, ToDate);
+
+            // Calculate totals
+            TotalExpenses = listExpenses.Sum(e => e.Amount);
+            TotalWaste = listWaste.Sum(w => w.TotalAmount);
+            EmployeeExpenses = listExpenses.Where(e => e.ExpenseType == "Employee").Sum(e => e.Amount);
+            OwnerExpenses = listExpenses.Where(e => e.ExpenseType == "Owner").Sum(e => e.Amount);
+
+            // Calculate expenses by category
+            expensesByCategory = listExpenses
+                .GroupBy(e => new { e.ExpenseCategoryId, e.ExpenseType })
+                .Select(g => new ExpenseCategorySummary
+                {
+                    CategoryName = GetCategoryName(g.Key.ExpenseCategoryId),
+                    ExpenseType = g.Key.ExpenseType,
+                    Amount = g.Sum(e => e.Amount),
+                    Percentage = TotalExpenses > 0 ? (g.Sum(e => e.Amount) / TotalExpenses) * 100 : 0
+                })
+                .OrderByDescending(x => x.Amount)
+                .ToList();
+
+            // Calculate waste by type
+            wasteByType = listWaste
+                .GroupBy(w => w.WasteType)
+                .Select(g => new WasteTypeSummary
+                {
+                    WasteType = g.Key,
+                    Amount = g.Sum(w => w.TotalAmount),
+                    Percentage = TotalWaste > 0 ? (g.Sum(w => w.TotalAmount) / TotalWaste) * 100 : 0
+                })
+                .OrderByDescending(x => x.Amount)
+                .ToList();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في توليد التقرير: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            Snackbar.Add("سيتم إضافة ميزة التصدير قريباً", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في التصدير: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetExpenseTypeText(string expenseType)
+    {
+        return expenseType switch
+        {
+            "Employee" => "مصاريف العمال",
+            "Owner" => "مصاريف صاحب المحل",
+            "Waste" => "هالك",
+            "Other" => "أخرى",
+            _ => expenseType
+        };
+    }
+
+    private string GetExpenseTypeBadgeClass(string expenseType)
+    {
+        return expenseType switch
+        {
+            "Employee" => "bg-success",
+            "Owner" => "bg-warning",
+            "Waste" => "bg-danger",
+            "Other" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetWasteTypeText(string wasteType)
+    {
+        return wasteType switch
+        {
+            "Expired" => "منتهي الصلاحية",
+            "Damaged" => "تالف",
+            "Stolen" => "مسروق",
+            "Other" => "أخرى",
+            _ => wasteType
+        };
+    }
+
+    private string GetWasteTypeBadgeClass(string wasteType)
+    {
+        return wasteType switch
+        {
+            "Expired" => "bg-warning",
+            "Damaged" => "bg-info",
+            "Stolen" => "bg-secondary",
+            "Other" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetCategoryName(int categoryId)
+    {
+        var category = listExpenseCategories?.FirstOrDefault(c => c.ExpenseCategoryId == categoryId);
+        return category?.CategoryName ?? "غير محدد";
+    }
+
+    private string GetProductName(int productId)
+    {
+        var product = listProducts?.FirstOrDefault(p => p.ProductId == productId);
+        return product?.ProductName ?? "غير محدد";
+    }
+
+    public class ExpenseCategorySummary
+    {
+        public string CategoryName { get; set; }
+        public string ExpenseType { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Percentage { get; set; }
+    }
+
+    public class WasteTypeSummary
+    {
+        public string WasteType { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Percentage { get; set; }
+    }
+}

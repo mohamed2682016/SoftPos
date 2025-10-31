@@ -1,0 +1,76 @@
+﻿@page "/roles"
+@using SoftPos.Data.UserView
+@inject IJSRuntime JsRuntime
+
+<PageTitle>إدارة الأدوار</PageTitle>
+
+<div class="container-fluid mt-4" dir="rtl">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-tag me-2"></i>
+                    إدارة الأدوار
+                </h4>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                الأدوار المتاحة في النظام
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 10%">#</th>
+                            <th style="width: 30%">اسم الدور</th>
+                            <th style="width: 60%">الوصف</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var role in GetRoles())
+                        {
+                            <tr>
+                                <td>@role.Id</td>
+                                <td>
+                                    <span class="badge bg-primary fs-6">
+                                        <i class="fas fa-user-shield me-2"></i>
+                                        @role.NameAr
+                                    </span>
+                                </td>
+                                <td>@role.Description</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private class RoleInfo
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string NameAr { get; set; }
+        public string Description { get; set; }
+    }
+
+    private List<RoleInfo> GetRoles()
+    {
+        return new List<RoleInfo>
+        {
+            new RoleInfo { Id = 1, Name = "Admin", NameAr = "مدير النظام", Description = "صلاحيات كاملة على جميع أجزاء النظام" },
+            new RoleInfo { Id = 2, Name = "User", NameAr = "مستخدم", Description = "صلاحيات محدودة للاستخدام العام" },
+            new RoleInfo { Id = 3, Name = "Accountant", NameAr = "محاسب", Description = "إدارة الحسابات والتقارير المالية" },
+            new RoleInfo { Id = 4, Name = "Counter", NameAr = "كاشير", Description = "إدارة نقطة البيع والمبيعات" },
+            new RoleInfo { Id = 5, Name = "Sales", NameAr = "مبيعات", Description = "إدارة فواتير المبيعات والعملاء" },
+            new RoleInfo { Id = 6, Name = "Purchase", NameAr = "مشتريات", Description = "إدارة فواتير المشتريات والموردين" },
+            new RoleInfo { Id = 7, Name = "Pos", NameAr = "نقطة البيع", Description = "الوصول لنقطة البيع فقط" }
+        };
+    }
+}

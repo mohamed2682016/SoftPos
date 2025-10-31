@@ -1,0 +1,24 @@
+﻿<div class="d-none d-md-block bg-primary py-1.5 px-2 rounded" style="width:280px;">
+    <span class="curr_datetime text-white fw-bold">@currentDateTime.ToString("MM/dd/yyyy hh:mm:ss tt")</span>
+</div>
+
+@code {
+    private DateTime currentDateTime = DateTimeHelper.Now; // الوقت الأولي
+
+    protected override void OnInitialized()
+    {
+        var timer = new System.Timers.Timer(1000); // مؤقت مضبوط على ثانية واحدة
+        timer.Elapsed += UpdateTime; // حدث لتحديث الوقت
+        timer.AutoReset = true;
+        timer.Enabled = true;
+    }
+
+    private void UpdateTime(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            currentDateTime = DateTimeHelper.Now; // تحديث الوقت الحالي
+            StateHasChanged(); // إشعار واجهة المستخدم بالتحديث
+        });
+    }
+}

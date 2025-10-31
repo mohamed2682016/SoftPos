@@ -1,0 +1,320 @@
+@page "/data-cleanup"
+@inject DataCleanupService cleanupService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<div class="container mt-4" dir="rtl">
+    <div class="card shadow">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-trash-alt me-2"></i>
+                تنظيف البيانات
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>تحذير:</strong> هذه العملية ستحذف البيانات نهائياً ولا يمكن التراجع عنها. يرجى التأكد من عمل نسخة احتياطية قبل المتابعة.
+            </div>
+
+            <div class="row g-3">
+                <!-- حذف جميع البيانات -->
+                <div class="col-md-6">
+                    <div class="card border-danger">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                حذف جميع البيانات
+                            </h5>
+                            <p class="card-text">
+                                سيتم حذف:
+                            </p>
+                            <ul class="text-danger">
+                                <li>جميع فواتير المبيعات والمرتجعات</li>
+                                <li>جميع فواتير المشتريات والمرتجعات</li>
+                                <li>جميع المنتجات</li>
+                                <li>جميع المدفوعات والمقبوضات</li>
+                                <li>جميع الحركات المخزنية والمحاسبية</li>
+                                <li>جميع سجلات المبيعات</li>
+                            </ul>
+                            <button class="btn btn-danger w-100" @onclick="ClearAllData" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="fas fa-trash me-2"></i>
+                                حذف جميع البيانات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- حذف بيانات المبيعات -->
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">
+                                <i class="fas fa-shopping-cart me-2"></i>
+                                حذف بيانات المبيعات
+                            </h5>
+                            <p class="card-text">
+                                سيتم حذف فواتير المبيعات والمرتجعات فقط
+                            </p>
+                            <button class="btn btn-warning w-100" @onclick="ClearSalesData" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="fas fa-trash me-2"></i>
+                                حذف بيانات المبيعات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- حذف بيانات المشتريات -->
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">
+                                <i class="fas fa-cart-arrow-down me-2"></i>
+                                حذف بيانات المشتريات
+                            </h5>
+                            <p class="card-text">
+                                سيتم حذف فواتير المشتريات والمرتجعات فقط
+                            </p>
+                            <button class="btn btn-warning w-100" @onclick="ClearPurchaseData" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="fas fa-trash me-2"></i>
+                                حذف بيانات المشتريات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- حذف بيانات المنتجات -->
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">
+                                <i class="fas fa-boxes me-2"></i>
+                                حذف بيانات المنتجات
+                            </h5>
+                            <p class="card-text">
+                                سيتم حذف جميع المنتجات والباتشات
+                            </p>
+                            <button class="btn btn-warning w-100" @onclick="ClearProductsData" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="fas fa-trash me-2"></i>
+                                حذف بيانات المنتجات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- حذف بيانات المدفوعات -->
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">
+                                <i class="fas fa-money-bill-wave me-2"></i>
+                                حذف بيانات المدفوعات والمقبوضات
+                            </h5>
+                            <p class="card-text">
+                                سيتم حذف جميع المدفوعات والمقبوضات فقط
+                            </p>
+                            <button class="btn btn-warning w-100" @onclick="ClearPaymentsData" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="fas fa-trash me-2"></i>
+                                حذف بيانات المدفوعات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isProcessing = false;
+
+    private async Task ClearAllData()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "هل أنت متأكد من حذف جميع البيانات؟ هذه العملية لا يمكن التراجع عنها!");
+        
+        if (!confirmed) return;
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await cleanupService.ClearAllTransactionsAsync();
+            
+            if (result)
+            {
+                Snackbar.Add("تم حذف جميع البيانات بنجاح", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("حدث خطأ أثناء حذف البيانات", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearSalesData()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "هل أنت متأكد من حذف بيانات المبيعات؟");
+        
+        if (!confirmed) return;
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await cleanupService.ClearSalesDataAsync();
+            
+            if (result)
+            {
+                Snackbar.Add("تم حذف بيانات المبيعات بنجاح", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("حدث خطأ أثناء حذف بيانات المبيعات", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearPurchaseData()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "هل أنت متأكد من حذف بيانات المشتريات؟");
+        
+        if (!confirmed) return;
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await cleanupService.ClearPurchaseDataAsync();
+            
+            if (result)
+            {
+                Snackbar.Add("تم حذف بيانات المشتريات بنجاح", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("حدث خطأ أثناء حذف بيانات المشتريات", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearProductsData()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "هل أنت متأكد من حذف بيانات المنتجات؟");
+        
+        if (!confirmed) return;
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await cleanupService.ClearProductsDataAsync();
+            
+            if (result)
+            {
+                Snackbar.Add("تم حذف بيانات المنتجات بنجاح", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("حدث خطأ أثناء حذف بيانات المنتجات", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearPaymentsData()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "هل أنت متأكد من حذف بيانات المدفوعات والمقبوضات؟");
+        
+        if (!confirmed) return;
+
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await cleanupService.ClearPaymentsDataAsync();
+            
+            if (result)
+            {
+                Snackbar.Add("تم حذف بيانات المدفوعات والمقبوضات بنجاح", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("حدث خطأ أثناء حذف بيانات المدفوعات", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+}

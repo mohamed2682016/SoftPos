@@ -1,0 +1,533 @@
+﻿@inject CompanyService companyService
+@inject TaxService taxService
+@inject AccountLedgerService accountledgerService
+@inject SalesInvoiceService salesinvoiceService
+@inject IPrintingService PrintingService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@using SoftPos.Utilities
+<link href="~/css/thermal-print.css" rel="stylesheet" />
+
+<!-- Modal Background -->
+<div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.7);" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" dir="rtl">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-receipt me-2"></i>
+                    معاينة الفاتورة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div id="print-content" class="container" dir="rtl" style="font-family: 'Cairo', Arial, sans-serif;">
+
+    <!-- تصميم الفاتورة الحرارية -->
+    <div id="printable-form" class="thermal-receipt" dir="rtl">
+        <!-- رأس الفاتورة -->
+        <div class="receipt-header">
+            <div class="tax-number">@(company?.GST ?? "300912657100003") / الرقم الضريبي</div>
+            <div class="receipt-title">فاتورة مبيعات</div>
+            <div class="receipt-info">
+                <div class="receipt-date">@(master?.Date.ToString("dd/MM/yyyy") ?? DateTimeHelper.Now.ToString("dd/MM/yyyy"))</div>
+                <div class="receipt-time">@(time ?? DateTimeHelper.Now.ToString("HH:mm:ss")) م</div>
+                <div class="receipt-number">@(master?.VoucherNo ?? "0000")</div>
+            </div>
+            <div class="cashier-info">
+                <span>@GetPaymentMethod()</span>
+                <span>@(ledger?.LedgerName ?? "عميل نقدي")</span>
+            </div>
+        </div>
+
+        <!-- خط فاصل -->
+        <div class="separator-line"></div>
+
+        <!-- جدول المنتجات -->
+        <div class="products-section">
+            <div class="products-header">
+                <span class="col-name">اسم الصنف</span>
+                <span class="col-qty">الكمية</span>
+                <span class="col-price">السعر</span>
+                <span class="col-total">الإجمالي</span>
+            </div>
+            
+            @if (productList != null && productList.Any())
+            {
+                @foreach (var item in productList)
+                {
+                    <div class="product-row">
+                        <span class="col-name">@(item.ProductName ?? "منتج")</span>
+                        <span class="col-qty">@item.Qty.ToString("0")</span>
+                        <span class="col-price">@item.SalesRate.ToString("0")</span>
+                        <span class="col-total">@item.Amount.ToString("0.00")</span>
+                    </div>
+                }
+            }
+        </div>
+
+        <!-- خط فاصل -->
+        <div class="separator-line"></div>
+
+        <!-- إجمالي الفاتورة -->
+        <div class="totals-section">
+            <div class="total-row">
+                <span>عدد @(productList?.Sum(x => x.Qty).ToString("0") ?? "0")</span>
+                <span>الإجمالي @(master?.NetAmounts.ToString("0.00") ?? "0.00")</span>
+            </div>
+            
+            <div class="total-row">
+                <span>الخصم @(master?.BillDiscount.ToString("0.00") ?? "0.00")</span>
+                <span>المدفوع @(master?.PayAmount.ToString("0.00") ?? "0.00")</span>
+            </div>
+            
+            <div class="total-row">
+                <span>الضريبة @(GetTaxPercentage())% @(master?.TotalTax.ToString("0.00") ?? "0.00")</span>
+                <span>المتبقي @(GetRemainingAmount())</span>
+            </div>
+            
+            @if (customerBalance > 0)
+            {
+                <div class="total-row customer-balance-row">
+                    <span style="font-weight: bold; color: #d9534f;">رصيد العميل الحالي</span>
+                    <span style="font-weight: bold; color: #d9534f;">@customerBalance.ToString("0.00")</span>
+                </div>
+            }
+            
+            <div class="final-total">
+                <span>الصافي @(master?.GrandTotal.ToString("0.00") ?? "0.00")</span>
+                <span>مدير الباقي</span>
+            </div>
+        </div>
+
+        <!-- معلومات إضافية -->
+        <div class="footer-info">
+            <div class="amount-words">@(strNumberToWords ?? "صفر ريال سعودي")</div>
+            <div class="dots">••</div>
+            <div class="company-info">
+                <div>@(company?.CompanyName ?? "اسم الشركة")</div>
+                @if (!string.IsNullOrEmpty(company?.Address))
+                {
+                    <div>@company.Address</div>
+                }
+                @if (!string.IsNullOrEmpty(company?.PhoneNo))
+                {
+                    <div>هاتف: @company.PhoneNo</div>
+                }
+            </div>
+            <div class="thank-you">شكراً لزيارتكم</div>
+            <div class="stars">************************</div>
+        </div>
+    </div>
+
+    <!-- أنماط CSS للفاتورة الحرارية -->
+    <style>
+        .thermal-receipt {
+            width: 80mm;
+            max-width: 300px;
+            margin: 0 auto;
+            font-family: 'Cairo', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+            padding: 8px;
+            direction: rtl;
+            text-align: right;
+            border: 1px solid #ddd;
+        }
+
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 8px;
+            direction: rtl;
+        }
+
+        .tax-number {
+            font-size: 10px;
+            margin-bottom: 3px;
+            text-align: center;
+            direction: rtl;
+        }
+
+        .receipt-title {
+            background: #000;
+            color: #fff;
+            padding: 3px 8px;
+            margin: 3px 0;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .receipt-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin: 4px 0;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .receipt-info div {
+            flex: 1;
+            text-align: center;
+        }
+
+        .cashier-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin: 3px 0;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .separator-line {
+            border-top: 1px solid #000;
+            margin: 4px 0;
+            width: 100%;
+        }
+
+        .products-section {
+            margin: 6px 0;
+            direction: rtl;
+        }
+
+        .products-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 10px;
+            border-bottom: 1px dotted #000;
+            padding-bottom: 3px;
+            margin-bottom: 4px;
+            direction: rtl;
+        }
+
+        .products-header span {
+            flex: 1;
+            text-align: center;
+        }
+
+        .products-header .col-name {
+            flex: 2;
+            text-align: right;
+        }
+
+        .product-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 2px;
+            direction: rtl;
+            border-bottom: 1px dotted #eee;
+            padding-bottom: 1px;
+        }
+
+        .product-row span {
+            flex: 1;
+            text-align: center;
+        }
+
+        .product-row .col-name {
+            flex: 2;
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .totals-section {
+            margin: 6px 0;
+            font-size: 10px;
+            direction: rtl;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            border-bottom: 1px dotted #ccc;
+            padding-bottom: 2px;
+            direction: rtl;
+        }
+
+        .total-row span {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .customer-balance-row {
+            background-color: #fff3cd;
+            border: 1px solid #d9534f;
+            padding: 3px 5px;
+            margin: 3px 0;
+        }
+
+        .final-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            padding: 4px 0;
+            margin: 4px 0;
+            direction: rtl;
+            background: #f8f9fa;
+        }
+
+        .final-total span {
+            flex: 1;
+            text-align: center;
+        }
+
+        .footer-info {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 10px;
+            direction: rtl;
+        }
+
+        .amount-words {
+            margin: 4px 0;
+            font-size: 9px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .dots {
+            margin: 3px 0;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .company-info {
+            margin: 6px 0;
+            font-size: 9px;
+            line-height: 1.4;
+            text-align: center;
+            direction: rtl;
+        }
+
+        .company-info div {
+            margin: 2px 0;
+        }
+
+        .thank-you {
+            margin: 4px 0;
+            font-weight: bold;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .stars {
+            margin: 4px 0;
+            font-size: 10px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        /* تحسينات للطباعة */
+        @@media print {
+            .thermal-receipt {
+                width: 80mm;
+                font-size: 11px;
+                border: none;
+                margin: 0;
+                padding: 5px;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                direction: rtl;
+            }
+            
+            .container, .d-flex, .btn {
+                display: none !important;
+            }
+
+            .receipt-header,
+            .products-section,
+            .totals-section,
+            .footer-info {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* تحسينات إضافية للنص العربي */
+        .thermal-receipt * {
+            font-family: 'Cairo', 'Tahoma', 'Arial', sans-serif;
+        }
+
+        .receipt-number {
+            font-weight: bold;
+        }
+
+        .receipt-date,
+        .receipt-time {
+            font-weight: normal;
+        }
+    </style>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer d-flex justify-content-center gap-3">
+                <button class="btn btn-success btn-lg px-5" @onclick="@(_ => PrintingService.Print("printable-form", PrintType.Html))">
+                    <i class="fas fa-print me-2"></i> طباعة الفاتورة
+                </button>
+                <button class="btn btn-secondary btn-lg px-5" @onclick="Close">
+                    <i class="fas fa-times me-2"></i> إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+    [Parameter] public EventCallback<int> OnButtonClick { get; set; }
+    [Parameter] public int id { get; set; }
+    private SalesMaster master = new SalesMaster();
+    private AccountLedger ledger = new AccountLedger();
+    private List<ProductView> productList = new List<ProductView>();
+    private List<Tax> listTax;
+    private bool _isFirstRender = true;
+    private CompanyView company;
+    private string strNumberToWords;
+    private string time;
+    private decimal customerBalance = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine($"PrintThermalPrint initialized with ID: {id}");
+        if (id > 0)
+        {
+            await LoadData();
+        }
+        else
+        {
+            Snackbar.Add("معرف الفاتورة غير صحيح", Severity.Error);
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            Console.WriteLine($"Loading data for invoice ID: {id}");
+            
+            time = DateTimeHelper.Now.ToString("hh:mm tt");
+            
+            // تحميل بيانات الشركة
+            company = await companyService.GetAllCompaniesByIdAsync(1);
+            if (company == null)
+            {
+                Snackbar.Add("لا يمكن تحميل بيانات الشركة", Severity.Error);
+                Console.WriteLine("Company data is null");
+                return;
+            }
+            Console.WriteLine($"Company loaded: {company.CompanyName}");
+
+            // تحميل بيانات الفاتورة
+            master = await salesinvoiceService.GetByIdAsync(id);
+            if (master == null)
+            {
+                Snackbar.Add("لا يمكن تحميل بيانات الفاتورة", Severity.Error);
+                Console.WriteLine("Master data is null");
+                return;
+            }
+            Console.WriteLine($"Master loaded: {master.VoucherNo}");
+
+            // تحميل تفاصيل المنتجات
+            productList = await salesinvoiceService.GetAllBySalesMasterDetails(id);
+            Console.WriteLine($"Products loaded: {productList?.Count ?? 0} items");
+
+            // تحميل بيانات الضرائب
+            listTax = await taxService.GetAllTaxsAsync();
+
+            // تحميل بيانات العميل
+            if (master.LedgerId > 0)
+            {
+                ledger = await accountledgerService.GetAccountLedgerByIdAsync(master.LedgerId);
+                Console.WriteLine($"Ledger loaded: {ledger?.LedgerName ?? "No ledger"}");
+                
+                // تحميل رصيد العميل
+                var customers = await accountledgerService.GetAllAccountLedgersByIdAsync(26);
+                var customer = customers.FirstOrDefault(c => c.LedgerId == master.LedgerId);
+                customerBalance = customer?.CurrentBalance ?? 0;
+                Console.WriteLine($"Customer balance: {customerBalance}");
+            }
+
+            // تحويل المبلغ إلى كلمات
+            if (master.GrandTotal > 0)
+            {
+                strNumberToWords = NumberToWords.ConvertAmount(Convert.ToDouble(master.GrandTotal));
+                Console.WriteLine($"Amount in words: {strNumberToWords}");
+            }
+
+            // إعادة رسم الصفحة بعد تحميل البيانات
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _isFirstRender)
+        {
+            _isFirstRender = false;
+            
+            // فقط انتظار تحميل البيانات - بدون طباعة أوتوماتيكية
+            await Task.Delay(500);
+            
+            if (master == null || company == null)
+            {
+                Snackbar.Add("البيانات لم تتحمل بعد، يرجى المحاولة مرة أخرى", Severity.Warning);
+            }
+        }
+    }
+
+    private async void Close()
+    {
+        await OnButtonClick.InvokeAsync(0);
+    }
+
+    private string GetTaxPercentage()
+    {
+        if (master?.NetAmounts > 0 && master?.TotalTax > 0)
+        {
+            var percentage = (master.TotalTax / master.NetAmounts) * 100;
+            return percentage.ToString("F0");
+        }
+        return "15";
+    }
+
+    private string GetPaymentMethod()
+    {
+        return master?.PaymentId switch
+        {
+            1 => "نقداً",
+            2 => "بطاقة",
+            3 => "محفظة",
+            _ => "نقداً"
+        };
+    }
+
+    private string GetRemainingAmount()
+    {
+        if (master != null)
+        {
+            var remaining = master.GrandTotal - master.PayAmount;
+            return remaining.ToString("F2");
+        }
+        return "0.00";
+    }
+}

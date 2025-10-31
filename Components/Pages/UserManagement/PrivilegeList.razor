@@ -1,0 +1,190 @@
+@page "/privileges"
+@inject IJSRuntime JsRuntime
+
+<PageTitle>إدارة الصلاحيات</PageTitle>
+
+<div class="container-fluid mt-4" dir="rtl">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-shield me-2"></i>
+                    إدارة الصلاحيات
+                </h4>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                صلاحيات كل دور في النظام
+            </div>
+
+            <!-- Admin Role -->
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-crown me-2"></i>
+                        مدير النظام (Admin)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>جميع الصلاحيات</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accountant Role -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        محاسب (Accountant)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>التقارير المالية</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>دفتر اليومية</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>الحسابات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>المقبوضات والمدفوعات</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Counter/Cashier Role -->
+            <div class="card mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cash-register me-2"></i>
+                        كاشير (Counter)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>نقطة البيع</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>فواتير المبيعات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>سجل المبيعات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger me-2 mb-2"><i class="fas fa-times me-1"></i>حذف الفواتير</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Role -->
+            <div class="card mb-3">
+                <div class="card-header" style="background-color: #6f42c1; color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        مبيعات (Sales)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>فواتير المبيعات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>العملاء</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>مرتجع المبيعات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>تقارير المبيعات</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Purchase Role -->
+            <div class="card mb-3">
+                <div class="card-header" style="background-color: #fd7e14; color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cart-arrow-down me-2"></i>
+                        مشتريات (Purchase)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>فواتير المشتريات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>الموردين</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>مرتجع المشتريات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>المنتجات</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- POS Only Role -->
+            <div class="card mb-3">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-desktop me-2"></i>
+                        نقطة البيع فقط (Pos)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>نقطة البيع</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger me-2 mb-2"><i class="fas fa-times me-1"></i>جميع الصلاحيات الأخرى</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Role -->
+            <div class="card mb-3">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>
+                        مستخدم (User)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-success me-2 mb-2"><i class="fas fa-check me-1"></i>عرض البيانات</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-danger me-2 mb-2"><i class="fas fa-times me-1"></i>التعديل والحذف</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    
+}

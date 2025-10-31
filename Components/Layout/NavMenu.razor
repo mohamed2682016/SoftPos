@@ -1,0 +1,344 @@
+﻿@using SoftPos.Resources
+@using SoftPos.Data.User
+@using SoftPos.Services
+@inject UserService userService
+
+<ul class="nav flex-column" dir="rtl" style="font-family: 'Cairo', sans-serif;">
+    <!-- لوحة التحكم -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" href="/dashboard">
+            <i class="fas fa-tachometer-alt me-3"></i> @PageTranslations.NavigationTranslations.Dashboard
+        </a>
+    </li>
+
+    <!-- الأطراف -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#partiesMenu" role="button" aria-expanded="false" aria-controls="partiesMenu">
+            <i class="fas fa-users me-3"></i> @PageTranslations.NavigationTranslations.Parties
+            <i class="fas fa-chevron-down ms-auto"></i>
+        </a>
+        <div class="collapse" id="partiesMenu">
+            <ul class="list-unstyled ps-4">
+                <li class="mb-2">
+                    <a href="/account-group-ar" class="nav-link text-light">
+                        <i class="fas fa-layer-group me-2"></i> @PageTranslations.NavigationTranslations.AccountGroup
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/account-ledger-ar" class="nav-link text-light">
+                        <i class="fas fa-book me-2"></i> @PageTranslations.NavigationTranslations.AccountLedger
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/customer-ar" class="nav-link text-light">
+                        <i class="fas fa-user-friends me-2"></i> @PageTranslations.NavigationTranslations.Customer
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/supplier-ar" class="nav-link text-light">
+                        <i class="fas fa-truck-loading me-2"></i> @PageTranslations.NavigationTranslations.Supplier
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- حسابات العملاء والموردين -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#accountsMenu" role="button" aria-expanded="false" aria-controls="accountsMenu">
+            <i class="fas fa-file-invoice-dollar me-3"></i> حسابات العملاء والموردين
+            <i class="fas fa-chevron-down ms-auto"></i>
+        </a>
+        <div class="collapse" id="accountsMenu">
+            <ul class="list-unstyled ps-4">
+                <li class="mb-2">
+                    <a href="/payment-in" class="nav-link text-light">
+                        <i class="fas fa-money-bill-wave me-2"></i> حسابات العملاء
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/payment-out" class="nav-link text-light">
+                        <i class="fas fa-hand-holding-usd me-2"></i> حسابات الموردين
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- الأصناف -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#ItemsMenu" role="button" aria-expanded="false" aria-controls="ItemsMenu">
+            <i class="fas fa-boxes me-3"></i> @PageTranslations.NavigationTranslations.Items
+            <i class="fas fa-chevron-down ms-auto"></i>
+        </a>
+        <div class="collapse" id="ItemsMenu">
+            <ul class="list-unstyled ps-4">
+                <li class="mb-2">
+                    <a href="/product-ar" class="nav-link text-light">
+                        <i class="fas fa-box-open me-2"></i> @PageTranslations.NavigationTranslations.Product
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/category-ar" class="nav-link text-light">
+                        <i class="fas fa-tags me-2"></i> @PageTranslations.NavigationTranslations.Category
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/unit-ar" class="nav-link text-light">
+                        <i class="fas fa-balance-scale me-2"></i> @PageTranslations.NavigationTranslations.Unit
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/brand-ar" class="nav-link text-light">
+                        <i class="fas fa-trademark me-2"></i> @PageTranslations.NavigationTranslations.Brand
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/warehouse-ar" class="nav-link text-light">
+                        <i class="fas fa-warehouse me-2"></i> @PageTranslations.NavigationTranslations.Warehouse
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- المبيعات -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false" aria-controls="salesMenu">
+            <i class="fas fa-shopping-cart me-3"></i> المبيعات
+            <i class="fas fa-chevron-down ms-auto"></i>
+        </a>
+        <div class="collapse" id="salesMenu">
+            <ul class="list-unstyled ps-4">
+                <li class="mb-2">
+                    <a href="/sales-ar" class="nav-link text-light">
+                        <i class="fas fa-receipt me-2"></i> فاتورة مبيعات
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/pos-ar" class="nav-link text-light">
+                        <i class="fas fa-cash-register me-2"></i> نقطة البيع
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/sales/register/arabic" class="nav-link text-light">
+                        <i class="fas fa-clipboard-list me-2"></i> سجل المبيعات
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/payment-in" class="nav-link text-light">
+                        <i class="fas fa-money-bill-wave me-2"></i> المقبوضات
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/sales-return" class="nav-link text-light">
+                        <i class="fas fa-undo me-2"></i> مرتجع مبيعات
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/coupon" class="nav-link text-light">
+                        <i class="fas fa-ticket-alt me-2"></i> الكوبونات
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- المشتريات -->
+    @if (CanAccess("Admin", "Purchase", "Accountant"))
+    {
+        <li class="nav-item mb-2">
+            <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#purchaseMenu" role="button" aria-expanded="false" aria-controls="purchaseMenu">
+                <i class="fas fa-cart-arrow-down me-3"></i> المشتريات
+                <i class="fas fa-chevron-down ms-auto"></i>
+            </a>
+            <div class="collapse" id="purchaseMenu">
+                <ul class="list-unstyled ps-4">
+                    <li class="mb-2">
+                        <a href="/purchase-ar" class="nav-link text-light">
+                            <i class="fas fa-file-invoice me-2"></i> فاتورة مشتريات
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/payment-out" class="nav-link text-light">
+                            <i class="fas fa-hand-holding-usd me-2"></i> المدفوعات
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/purchase-return" class="nav-link text-light">
+                            <i class="fas fa-redo-alt me-2"></i> مرتجع مشتريات
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    }
+
+    <!-- التقارير -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#reportMenu" role="button" aria-expanded="false" aria-controls="reportMenu">
+            <i class="fas fa-chart-pie me-3"></i> التقارير
+            <i class="fas fa-chevron-down ms-auto"></i>
+        </a>
+        <div class="collapse" id="reportMenu">
+            <ul class="list-unstyled ps-4">
+                <li class="mb-2">
+                    <a href="/report-ar" class="nav-link text-light">
+                        <i class="fas fa-chart-line me-2"></i> التقارير العامة
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/expense-report-ar" class="nav-link text-light">
+                        <i class="fas fa-money-bill-wave me-2"></i> تقرير المصاريف والهالك
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- الأدوات -->
+    @if (IsAdmin())
+    {
+        <li class="nav-item mb-2">
+            <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#utilitiesMenu" role="button" aria-expanded="false" aria-controls="utilitiesMenu">
+                <i class="fas fa-tools me-3"></i> الأدوات
+                <i class="fas fa-chevron-down ms-auto"></i>
+            </a>
+            <div class="collapse" id="utilitiesMenu">
+                <ul class="list-unstyled ps-4">
+                    <li class="mb-2">
+                        <a href="/barcode" class="nav-link text-light">
+                            <i class="fas fa-barcode me-2"></i> مولد الباركود
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/import-items" class="nav-link text-light">
+                            <i class="fas fa-file-import me-2"></i> استيراد الأصناف
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/backup" class="nav-link text-light">
+                            <i class="fas fa-database me-2"></i> النسخ الاحتياطي
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/data-cleanup" class="nav-link text-light">
+                            <i class="fas fa-trash-alt me-2"></i> تنظيف البيانات
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/database-viewer" class="nav-link text-light">
+                            <i class="fas fa-database me-2"></i> عرض قاعدة البيانات
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    }
+
+    <!-- إدارة المصاريف والهالك -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#expenseMenu" role="button" aria-expanded="false" aria-controls="expenseMenu">
+            <i class="fas fa-money-bill-wave me-3"></i> إدارة المصاريف
+            <i class="fas fa-chevron-down ms-auto"></i>
+        </a>
+        <div class="collapse" id="expenseMenu">
+            <ul class="list-unstyled ps-4">
+                <li class="mb-2">
+                    <a href="/expense-ar" class="nav-link text-light">
+                        <i class="fas fa-receipt me-2"></i> المصاريف
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/expense-category-ar" class="nav-link text-light">
+                        <i class="fas fa-tags me-2"></i> فئات المصاريف
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/waste-ar" class="nav-link text-light">
+                        <i class="fas fa-trash me-2"></i> الهالك
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- إدارة المستخدمين والصلاحيات -->
+    @if (IsAdmin())
+    {
+        <li class="nav-item mb-2">
+            <a class="nav-link text-light d-flex align-items-center" data-bs-toggle="collapse" href="#usersMenu" role="button" aria-expanded="false" aria-controls="usersMenu">
+                <i class="fas fa-users-cog me-3"></i> إدارة المستخدمين
+                <i class="fas fa-chevron-down ms-auto"></i>
+            </a>
+            <div class="collapse" id="usersMenu">
+                <ul class="list-unstyled ps-4">
+                    <li class="mb-2">
+                        <a href="/user" class="nav-link text-light">
+                            <i class="fas fa-user-plus me-2"></i> إدارة المستخدمين
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/roles" class="nav-link text-light">
+                            <i class="fas fa-user-tag me-2"></i> إدارة الأدوار
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="/privileges" class="nav-link text-light">
+                            <i class="fas fa-user-shield me-2"></i> إدارة الصلاحيات
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    }
+
+    <!-- الإعدادات -->
+    @if (IsAdmin())
+    {
+        <li class="nav-item mb-2">
+            <a class="nav-link text-light d-flex align-items-center" href="/setting">
+                <i class="fas fa-cogs me-3"></i> الإعدادات
+            </a>
+        </li>
+    }
+
+    <!-- تفعيل الترخيص -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" href="/license-activation">
+            <i class="fas fa-key me-3"></i> تفعيل الترخيص
+        </a>
+    </li>
+
+    <!-- التحديثات -->
+    <li class="nav-item mb-2">
+        <a class="nav-link text-light d-flex align-items-center" href="/update">
+            <i class="fas fa-sync-alt me-3"></i> التحقق من التحديثات
+        </a>
+    </li>
+</ul>
+
+
+@code {
+    private UserMaster? currentUser;
+    private string userRole = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await userService.GetCurrentUser();
+        userRole = currentUser?.Role ?? "";
+    }
+
+    private bool CanAccess(params string[] allowedRoles)
+    {
+        if (string.IsNullOrEmpty(userRole)) return false;
+        if (userRole == "Admin") return true; // Admin has access to everything
+        return allowedRoles.Contains(userRole);
+    }
+
+    private bool IsAdmin() => userRole == "Admin";
+    private bool IsSales() => userRole == "Sales" || userRole == "Counter" || userRole == "Pos";
+    private bool IsPurchase() => userRole == "Purchase";
+    private bool IsAccountant() => userRole == "Accountant";
+    private bool IsCounter() => userRole == "Counter" || userRole == "Pos";
+}
