@@ -1,0 +1,383 @@
+﻿@page "/sales/add-ar"
+@page "/sales/add-ar/{id:int}"
+@inject GreniteService graniteService
+@inject TilesQuotationService tilesQuotationService
+@inject SalesInvoiceService salesInvoiceService
+@inject PaymentInService paymentinService
+@inject InvoiceSettingService invoiceSettingService
+@inject UserService userService
+@inject CompanyService companyService
+@inject TaxService taxService
+@inject AccountLedgerService accountledgerService
+@inject WarehouseService warehouseService
+@inject UnitService unitService
+@inject ProductService productService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@using SoftPos.Resources
+@using SoftPos.Data.InventoryModel
+@using SoftPos.Data.InventoryModelView
+@using SoftPos.Data.Setting
+@using SoftPos.Data.SettingView
+@using SoftPos.Data.AccountView
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <div class="section py-4">
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="d-flex align-items-center">
+                    <h4 class="text-primary">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>فاتورة مبيعات | إضافة
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <!-- Form Section -->
+                <div class="row g-3">
+                    <div class="col-lg-3 col-sm-6">
+                        <div class="form-group">
+                            <label>رقم الفاتورة</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" @bind="master.VoucherNo" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5 col-sm-6">
+                        <div class="form-group">
+                            <label>اسم العميل <span class="text-danger">*</span></label>
+                            <div class="d-flex align-items-center">
+                                <select class="form-select me-2" @bind="@master.LedgerId" style="flex: 1;">
+                                    <option value="0">اختر العميل</option>
+                                    @if (listLedger != null)
+                                    {
+                                        @foreach (var ledger in listLedger)
+                                        {
+                                            <option value="@ledger.LedgerId">@ledger.LedgerName</option>
+                                        }
+                                    }
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenCustomerModal">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-sm-6">
+                        <div class="form-group">
+                            <label>التاريخ</label>
+                            <InputDate class="form-control" @bind-Value="master.Date" />
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-sm-6">
+                        <div class="form-group">
+                            <label>المستودع</label>
+                            <select class="form-select" @bind="master.WarehouseId">
+                                <option value="0">اختر المستودع</option>
+                                @if (listWarehouse != null)
+                                {
+                                    @foreach (var warehouse in listWarehouse)
+                                    {
+                                        <option value="@warehouse.WarehouseId">@warehouse.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Selection Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-box me-2"></i>تفاصيل المنتجات
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25%;">المنتج</th>
+                                        <th style="width: 10%;">الكمية</th>
+                                        <th style="width: 15%;">السعر</th>
+                                        <th style="width: 10%;">الخصم</th>
+                                        <th style="width: 15%;">الضريبة</th>
+                                        <th style="width: 15%;">الإجمالي</th>
+                                        <th style="width: 10%;">العمليات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (listProduct != null && listProduct.Any())
+                                    {
+                                        @for (int i = 0; i < listProduct.Count; i++)
+                                        {
+                                            var index = i;
+                                            <tr>
+                                                <td>
+                                                    <select class="form-select" @bind="listProduct[index].ProductId">
+                                                        <option value="0">اختر المنتج</option>
+                                                        @if (listAllProducts != null)
+                                                        {
+                                                            @foreach (var product in listAllProducts)
+                                                            {
+                                                                <option value="@product.ProductId">@product.ProductName</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control" @bind="listProduct[index].Qty" 
+                                                           @oninput="@((e) => CalculateRowTotal(index))" min="1" />
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control" @bind="listProduct[index].Rate" 
+                                                           @oninput="@((e) => CalculateRowTotal(index))" step="0.01" />
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control" @bind="listProduct[index].DiscountAmount" 
+                                                           @oninput="@((e) => CalculateRowTotal(index))" step="0.01" />
+                                                </td>
+                                                <td>
+                                                    <select class="form-select" @bind="listProduct[index].TaxId">
+                                                        <option value="0">بدون ضريبة</option>
+                                                        @if (listTax != null)
+                                                        {
+                                                            @foreach (var tax in listTax)
+                                                            {
+                                                                <option value="@tax.TaxId">@tax.TaxName (@tax.Rate%)</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control" @bind="listProduct[index].NetAmount" readonly />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveProduct(index)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary" @onclick="AddNewProduct">
+                            <i class="fas fa-plus me-2"></i>إضافة منتج
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Section -->
+                <div class="row mt-4">
+                    <div class="col-lg-8"></div>
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">ملخص الفاتورة</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>المجموع الفرعي:</span>
+                                    <span>@master.TotalAmount.ToString("F2")</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>إجمالي الخصم:</span>
+                                    <span>@master.TotalDiscountAmount.ToString("F2")</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>إجمالي الضريبة:</span>
+                                    <span>@master.TotalTaxAmount.ToString("F2")</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between fw-bold">
+                                    <span>الإجمالي النهائي:</span>
+                                    <span>@master.GrandTotal.ToString("F2")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label>ملاحظات</label>
+                            <textarea class="form-control" rows="3" @bind="master.Narration" placeholder="أدخل أي ملاحظات إضافية..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success" @onclick="SaveInvoice">
+                                <i class="fas fa-save me-2"></i>حفظ الفاتورة
+                            </button>
+                            <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                                <i class="fas fa-arrow-left me-2"></i>رجوع
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? add { get; set; }
+    [Parameter] public int id { get; set; }
+
+    private SalesMaster master = new();
+    private List<AccountLedgerView> listLedger = new();
+    private List<Warehouse> listWarehouse = new();
+    private List<SalesDetails> listProduct = new();
+    private List<ProductView> listAllProducts = new();
+    private List<Tax> listTax = new();
+    private CompanyView company = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Initialize data
+            listLedger = await accountledgerService.GetAllAccountLedgersByIdAsync(26); // Customers
+            listWarehouse = await warehouseService.GetAllWarehouseAsync();
+            listAllProducts = await productService.GetAllProductAsync();
+            listTax = await taxService.GetAllTaxAsync();
+            company = await companyService.GetCompanyAsync();
+
+            // Initialize master
+            master.Date = DateTimeHelper.Now;
+            master.VoucherNo = await GenerateVoucherNumber();
+            master.UserId = 1; // Get from user service
+            
+            // Add initial empty product row
+            AddNewProduct();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<string> GenerateVoucherNumber()
+    {
+        try
+        {
+            var invoiceSetting = await invoiceSettingService.GetInvoiceSettingAsync(1);
+            return $"{invoiceSetting.Prefix}{invoiceSetting.StartFrom + 1}";
+        }
+        catch
+        {
+            return "SI-001";
+        }
+    }
+
+    private void AddNewProduct()
+    {
+        listProduct.Add(new SalesDetails
+        {
+            ProductId = 0,
+            Qty = 1,
+            Rate = 0,
+            DiscountAmount = 0,
+            TaxId = 0,
+            NetAmount = 0
+        });
+    }
+
+    private void RemoveProduct(int index)
+    {
+        if (listProduct.Count > 1)
+        {
+            listProduct.RemoveAt(index);
+            CalculateTotal();
+        }
+    }
+
+    private void CalculateRowTotal(int index)
+    {
+        if (index < listProduct.Count)
+        {
+            var item = listProduct[index];
+            var subtotal = item.Qty * item.Rate;
+            var afterDiscount = subtotal - item.DiscountAmount;
+            
+            // Calculate tax
+            var taxAmount = 0m;
+            if (item.TaxId > 0)
+            {
+                var tax = listTax.FirstOrDefault(t => t.TaxId == item.TaxId);
+                if (tax != null)
+                {
+                    taxAmount = afterDiscount * (tax.Rate / 100);
+                }
+            }
+            
+            item.NetAmount = afterDiscount + taxAmount;
+            CalculateTotal();
+        }
+    }
+
+    private void CalculateTotal()
+    {
+        master.TotalAmount = listProduct.Sum(p => p.Qty * p.Rate);
+        master.TotalDiscountAmount = listProduct.Sum(p => p.DiscountAmount);
+        master.TotalTaxAmount = listProduct.Sum(p => p.NetAmount - (p.Qty * p.Rate - p.DiscountAmount));
+        master.GrandTotal = listProduct.Sum(p => p.NetAmount);
+    }
+
+    private async Task SaveInvoice()
+    {
+        try
+        {
+            if (master.LedgerId == 0)
+            {
+                Snackbar.Add("يرجى اختيار العميل", Severity.Warning);
+                return;
+            }
+
+            if (!listProduct.Any(p => p.ProductId > 0))
+            {
+                Snackbar.Add("يرجى إضافة منتج واحد على الأقل", Severity.Warning);
+                return;
+            }
+
+            // Set details
+            master.SalesDetails = listProduct.Where(p => p.ProductId > 0).ToList();
+            
+            // Save invoice
+            bool result = await salesInvoiceService.AddSalesInvoiceAsync(master);
+            
+            if (result)
+            {
+                Snackbar.Add("تم حفظ فاتورة المبيعات بنجاح", Severity.Success);
+                NavigationManager.NavigateTo("/sales-ar");
+            }
+            else
+            {
+                Snackbar.Add("فشل في حفظ فاتورة المبيعات", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في حفظ الفاتورة: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenCustomerModal()
+    {
+        // Implement customer modal
+        Snackbar.Add("سيتم إضافة نافذة إضافة العميل قريباً", Severity.Info);
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/sales-ar");
+    }
+}

@@ -1,0 +1,547 @@
+﻿@page "/expense-ar"
+@inject ExpenseService expenseService
+@inject ExpenseCategoryService expenseCategoryService
+@inject UserService userService
+@inject WarehouseService warehouseService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@using SoftPos.Data.InventoryModel
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4 class="text-primary fw-bold">إدارة المصاريف</h4>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowModal">
+                <i class="fas fa-plus me-2"></i> إضافة مصروف جديد
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- From Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">من تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="FromDate" />
+                            </div>
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">إلى تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="ToDate" />
+                            </div>
+                        </div>
+
+                        <!-- Expense Type -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">نوع المصروف</label>
+                                <select class="form-control" @bind="SelectedExpenseType">
+                                    <option value="">جميع الأنواع</option>
+                                    <option value="Employee">مصاريف العمال</option>
+                                    <option value="Owner">مصاريف صاحب المحل</option>
+                                    <option value="Waste">هالك</option>
+                                    <option value="Other">أخرى</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="col-lg-3 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">الفئة</label>
+                                <select class="form-control" @bind="SelectedCategoryId">
+                                    <option value="0">جميع الفئات</option>
+                                    @if (listExpenseCategories != null)
+                                    {
+                                        @foreach (var item in listExpenseCategories)
+                                        {
+                                            <option value="@item.ExpenseCategoryId">@item.CategoryName</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Search Button -->
+                        <div class="col-lg-2 col-sm-6 col-12 align-self-end">
+                            <button class="btn btn-primary w-100" @onclick="Filter">
+                                <i class="fas fa-search me-2"></i> بحث
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">إجمالي المصاريف</h6>
+                            <h4>@TotalExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-money-bill-wave fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">مصاريف العمال</h6>
+                            <h4>@EmployeeExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">مصاريف صاحب المحل</h6>
+                            <h4>@OwnerExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-tie fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">الهالك</h6>
+                            <h4>@WasteExpenses.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-trash fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle">
+                        <thead class="table-primary">
+                            <tr>
+                                <th scope="col">اسم المصروف</th>
+                                <th scope="col">النوع</th>
+                                <th scope="col">الفئة</th>
+                                <th scope="col">المبلغ</th>
+                                <th scope="col">التاريخ</th>
+                                <th scope="col">الحالة</th>
+                                <th scope="col">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (listExpenses == null || !listExpenses.Any())
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <div>
+                                            <i class="fas fa-exclamation-circle fs-1 text-warning"></i>
+                                            <h5 class="mt-2">لا توجد بيانات</h5>
+                                            <p class="mb-2">لا توجد مصاريف في النطاق الزمني المحدد</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in listExpenses)
+                                {
+                                    <tr>
+                                        <td>@item.ExpenseName</td>
+                                        <td>
+                                            <span class="badge @GetExpenseTypeBadgeClass(item.ExpenseType)">
+                                                @GetExpenseTypeText(item.ExpenseType)
+                                            </span>
+                                        </td>
+                                        <td>@GetCategoryName(item.ExpenseCategoryId)</td>
+                                        <td><strong>@item.Amount.ToString("F2")</strong></td>
+                                        <td>@item.ExpenseDate.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <span class="badge @(item.IsApproved ? "bg-success" : "bg-warning")">
+                                                @(item.IsApproved ? "معتمد" : "غير معتمد")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" @onclick="() => Edit(item.ExpenseId)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => Delete(item.ExpenseId)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                @if (!item.IsApproved)
+                                                {
+                                                    <button class="btn btn-outline-success" @onclick="() => Approve(item.ExpenseId)">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+@if (IsModalVisible)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@ModalTitle</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">اسم المصروف</label>
+                            <input type="text" class="form-control" @bind="expense.ExpenseName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">نوع المصروف</label>
+                            <select class="form-control" @bind="expense.ExpenseType">
+                                <option value="Employee">مصاريف العمال</option>
+                                <option value="Owner">مصاريف صاحب المحل</option>
+                                <option value="Waste">هالك</option>
+                                <option value="Other">أخرى</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">الفئة</label>
+                            <select class="form-control" @bind="expense.ExpenseCategoryId">
+                                <option value="0">اختر الفئة</option>
+                                @if (listExpenseCategories != null)
+                                {
+                                    @foreach (var item in listExpenseCategories)
+                                    {
+                                        <option value="@item.ExpenseCategoryId">@item.CategoryName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">المبلغ</label>
+                            <input type="number" class="form-control" @bind="expense.Amount" step="0.01" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">التاريخ</label>
+                            <InputDate class="form-control" @bind-Value="expense.ExpenseDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">المرجع</label>
+                            <input type="text" class="form-control" @bind="expense.Reference" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">الوصف</label>
+                            <textarea class="form-control" rows="3" @bind="expense.Description"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea class="form-control" rows="2" @bind="expense.Notes"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" @onclick="Save">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    List<Expense> listExpenses = new();
+    List<ExpenseCategory> listExpenseCategories = new();
+    List<UserMaster> listUsers = new();
+    List<Warehouse> listWarehouses = new();
+    Expense expense = new();
+    DateTime FromDate = DateTimeHelper.Now.AddDays(-30);
+    DateTime ToDate = DateTimeHelper.Now;
+    string SelectedExpenseType = "";
+    int SelectedCategoryId = 0;
+    bool IsModalVisible = false;
+    string ModalTitle = "";
+    decimal TotalExpenses = 0;
+    decimal EmployeeExpenses = 0;
+    decimal OwnerExpenses = 0;
+    decimal WasteExpenses = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listExpenseCategories = await expenseCategoryService.GetActiveExpenseCategoriesAsync();
+            listUsers = await userService.GetAllUserMastersAsync();
+            listWarehouses = await warehouseService.GetAllWarehousesAsync();
+            listExpenses = await expenseService.GetAllExpensesAsync();
+            await Filter();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Filter()
+    {
+        try
+        {
+            listExpenses = await expenseService.GetExpensesByDateRangeAsync(FromDate, ToDate);
+            
+            if (!string.IsNullOrEmpty(SelectedExpenseType))
+            {
+                listExpenses = listExpenses.Where(e => e.ExpenseType == SelectedExpenseType).ToList();
+            }
+            
+            if (SelectedCategoryId > 0)
+            {
+                listExpenses = listExpenses.Where(e => e.ExpenseCategoryId == SelectedCategoryId).ToList();
+            }
+
+            CalculateTotals();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الفلترة: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CalculateTotals()
+    {
+        TotalExpenses = listExpenses.Sum(e => e.Amount);
+        EmployeeExpenses = listExpenses.Where(e => e.ExpenseType == "Employee").Sum(e => e.Amount);
+        OwnerExpenses = listExpenses.Where(e => e.ExpenseType == "Owner").Sum(e => e.Amount);
+        WasteExpenses = listExpenses.Where(e => e.ExpenseType == "Waste").Sum(e => e.Amount);
+    }
+
+    private async Task ShowModal()
+    {
+        ModalTitle = "إضافة مصروف جديد";
+        await Reset();
+        IsModalVisible = true;
+    }
+
+    private async Task Reset()
+    {
+        expense = new Expense
+        {
+            ExpenseDate = DateTimeHelper.Now,
+            ExpenseType = "Other"
+        };
+    }
+
+    private async Task Edit(int id)
+    {
+        try
+        {
+            ModalTitle = "تعديل المصروف";
+            expense = await expenseService.GetExpenseByIdAsync(id);
+            IsModalVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذا المصروف؟");
+            if (confirmed)
+            {
+                bool result = await expenseService.DeleteExpenseAsync(id);
+                if (result)
+                {
+                    Snackbar.Add("تم حذف المصروف بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("فشل في حذف المصروف", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الحذف: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Approve(int id)
+    {
+        try
+        {
+            var currentUser = await userService.GetCurrentUser();
+            if (currentUser != null)
+            {
+                bool result = await expenseService.ApproveExpenseAsync(id, currentUser.UserId);
+                if (result)
+                {
+                    Snackbar.Add("تم اعتماد المصروف بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("فشل في اعتماد المصروف", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الاعتماد: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(expense.ExpenseName))
+            {
+                Snackbar.Add("يرجى إدخال اسم المصروف", Severity.Warning);
+                return;
+            }
+
+            if (expense.Amount <= 0)
+            {
+                Snackbar.Add("يرجى إدخال مبلغ صحيح", Severity.Warning);
+                return;
+            }
+
+            if (expense.ExpenseCategoryId == 0)
+            {
+                Snackbar.Add("يرجى اختيار فئة المصروف", Severity.Warning);
+                return;
+            }
+
+            var currentUser = await userService.GetCurrentUser();
+            if (currentUser != null)
+            {
+                expense.UserId = currentUser.UserId;
+            }
+
+            int result;
+            if (expense.ExpenseId == 0)
+            {
+                result = await expenseService.AddExpenseAsync(expense);
+                if (result > 0)
+                {
+                    Snackbar.Add("تم إضافة المصروف بنجاح", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("فشل في إضافة المصروف", Severity.Error);
+                }
+            }
+            else
+            {
+                bool updateResult = await expenseService.UpdateExpenseAsync(expense);
+                if (updateResult)
+                {
+                    Snackbar.Add("تم تحديث المصروف بنجاح", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("فشل في تحديث المصروف", Severity.Error);
+                }
+            }
+
+            CloseModal();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الحفظ: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        IsModalVisible = false;
+    }
+
+    private string GetExpenseTypeText(string expenseType)
+    {
+        return expenseType switch
+        {
+            "Employee" => "مصاريف العمال",
+            "Owner" => "مصاريف صاحب المحل",
+            "Waste" => "هالك",
+            "Other" => "أخرى",
+            _ => expenseType
+        };
+    }
+
+    private string GetExpenseTypeBadgeClass(string expenseType)
+    {
+        return expenseType switch
+        {
+            "Employee" => "bg-success",
+            "Owner" => "bg-warning",
+            "Waste" => "bg-danger",
+            "Other" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetCategoryName(int categoryId)
+    {
+        var category = listExpenseCategories?.FirstOrDefault(c => c.ExpenseCategoryId == categoryId);
+        return category?.CategoryName ?? "غير محدد";
+    }
+}

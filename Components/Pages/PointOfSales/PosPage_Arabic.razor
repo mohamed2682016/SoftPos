@@ -1,0 +1,1709 @@
+﻿@page "/pos-ar"
+@inject SalesRegisterService _register
+@inject PaymentInService paymentinService
+@inject BrandService brandService
+@inject SalesInvoiceService salesInvoiceService
+@inject CategoryService categoryService
+@inject InvoiceSettingService invoiceSettingService
+@inject UserService userService
+@inject CompanyService companyService
+@inject TaxService taxService
+@inject AccountLedgerService accountledgerService
+@inject WarehouseService warehouseService
+@inject UnitService unitService
+@inject ProductService productService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@using SoftPos.Components.Layout
+@using SoftPos.Resources
+@using SoftPos.Utilities
+@layout PosLayout
+<div class="container-fluid custom-container" dir="rtl">
+    <!-- Header Section -->
+    <div class="pos-header d-flex flex-column flex-md-row justify-content-between align-items-center">
+        <PosHeaderNav master="@master" WarehouseList="@listWarehouse" />
+    </div>
+
+    <!-- Main Section -->
+    <div class="row mt-3 main-section">
+        <!-- Products Section - الآن في الجانب الأيسر -->
+        <div class="col-md-5 left-panel">
+            <div class="card cart-card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <!-- Category Dropdown -->
+                    <div class="customer-select w-100">
+                        <label for="categoryDropdown" class="visually-hidden">اختر الفئة</label>
+                        <select id="categoryDropdown" class="form-select w-100" @bind="selectedCategoryId" @onclick="() => LoadProducts(selectedCategoryId)">
+                            <option value="0">جميع الفئات</option>
+                            @if (listCategory != null)
+                            {
+                                foreach (var item in listCategory)
+                                {
+                                    <option value="@item.GroupId">@item.GroupName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Brand Dropdown -->
+                    <div class="warehouse-select w-100">
+                        <label for="brandDropdown" class="visually-hidden">اختر الماركة</label>
+                        <select id="brandDropdown" class="form-select w-100" @bind="@selectedBrandId">
+                            <option value="0">جميع الماركات</option>
+                            @if (listBrand != null)
+                            {
+                                foreach (var brand in listBrand)
+                                {
+                                    <option value="@brand.BrandId">@brand.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="card-body p-3">
+                    <!-- Items Cards -->
+                    <div class="items-container">
+                        @if (listProduct != null)
+                        {
+                            @foreach (var product in listProduct)
+                            {
+                                <div class="item-card">
+                                    <a @onclick="()=>ChangeProduct(product.ProductName)" style="cursor:pointer;">
+                                        @if (string.IsNullOrEmpty(product.Image))
+                                        {
+                                            <img src="/img/noimage.png" class="item-image" />
+                                        }
+                                        else
+                                        {
+                                            <img src="@product.Image" class="item-image" />
+                                        }
+                                        <div class="card-body text-center">
+                                            <h5 class="item-title mt-2">@product.ProductName</h5>
+                                            <div class="product-info mt-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="badge bg-info text-white">
+                                                        <i class="fas fa-boxes"></i> @product.CurrentStock
+                                                    </span>
+                                                    <span class="badge bg-success text-white">
+                                                        <i class="fas fa-tag"></i> @company?.CurrencySymbol@product.SalesRate
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                </div>
+            </div>
+
+
+
+
+
+            <!-- أزرار العمليات -->
+            <div class="payment-buttons-footer bg-white py-2 shadow-sm mt-3">
+                <div class="d-flex justify-content-center gap-1 quick-payment-buttons flex-wrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="HoldBill">
+                        <i class="fas fa-clock me-1"></i> فواتير مؤجلة
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="LoadData">
+                        <i class="fas fa-trash-alt me-1"></i> مسح السلة
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" @onclick="RegisterDetails">
+                        <i class="fas fa-info-circle me-1"></i> تفاصيل السجل
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="RecentTransaction">
+                        <i class="fas fa-history me-1"></i> المعاملات الأخيرة
+                    </button>
+                    @if (id > 0 || master.SalesMasterId > 0)
+                    {
+                        <button class="btn btn-outline-success btn-sm" @onclick="ShowPrintModal">
+                            <i class="fas fa-print me-1"></i> طباعة آخر فاتورة
+                        </button>
+                    }
+                </div>
+            </div>
+
+
+
+            <!-- الإجماليات وتفاصيل الدفع - في الجانب الأيمن -->
+                    <div class="container-fluid bg-light border rounded py-2 mt-2">
+                        <div class="row text-center g-1">
+                            <!-- Quantity -->
+                            <div class="col-6 col-md-3 border-end">
+                                <h6 class="fw-bold text-dark mb-0">@productList?.Sum(c => c.Qty)</h6>
+                                <small class="text-secondary">الكمية</small>
+                            </div>
+
+                            <!-- Taxable Amount -->
+                            <div class="col-6 col-md-3 border-end">
+                                <h6 class="fw-bold text-success mb-0">@(master?.NetAmounts)</h6>
+                                <small class="text-secondary">الخاضع للضريبة</small>
+                            </div>
+
+                            <!-- Tax Amount -->
+                            <div class="col-6 col-md-2 border-end">
+                                <h6 class="fw-bold text-warning mb-0">@(master?.TotalTax ?? 0)</h6>
+                                <small class="text-secondary">الضريبة</small>
+                            </div>
+
+                            <!-- Discount -->
+                            <div class="col-6 col-md-2 border-end">
+                                <h6 class="fw-bold text-danger mb-0">@master.BillDiscount</h6>
+                                <small class="text-secondary">الخصم</small>
+                            </div>
+
+                            <!-- Total Amount -->
+                            <div class="col-12 col-md-2">
+                                <h6 class="fw-bold text-primary mb-0">@master.GrandTotal</h6>
+                                <small class="text-secondary">الإجمالي</small>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+
+        </div>
+
+        <!-- Cart Section - الآن في الجانب الأيمن -->
+        <div class="col-md-7 right-panel">
+            <div class="row">
+                <div class="col-md-12 items-section">
+                    <div class="row g-3">
+                        <!-- Customer Selection -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fa fa-user"></i>
+                                    </span>
+                                    <select class="form-select" aria-label="اختر العميل" @bind="master.LedgerId" @bind:after="OnCustomerChanged">
+                                        @foreach (var supplier in listLedger ?? new List<AccountLedgerView>())
+                                        {
+                                            <option value="@supplier.LedgerId">@supplier.LedgerName</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-light add_new_customer" @onclick="ShowModal">
+                                        <i class="fa fa-plus-circle text-primary"></i>
+                                    </button>
+                                </div>
+                                @if (selectedCustomerBalance > 0)
+                                {
+                                    <div class="alert alert-warning mt-2 mb-0 py-1 px-2 d-flex align-items-center" style="font-size: 0.9rem;">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <span><strong>رصيد العميل:</strong> @company?.CurrencySymbol @selectedCustomerBalance.ToString("N2")</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Product Search -->
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <div class="input-group">
+                                    <div class="d-flex align-items-center gap-2 autocomplete-container">
+                                        <!-- Autocomplete Input and List -->
+                                        <div class="autocomplete position-relative flex-grow-1">
+                                            @* Razor block to handle empty state variable *@
+                                            @{
+                                                var strEmpty = string.Empty;
+                                            }
+
+                                            <input @bind="@strBarcode"
+                                            class="form-control shadow-sm"
+                                            onclick="getfocus()"
+                                            @onchange="() => OnChange()"
+                                            @onkeyup="() => OnChange()"
+                                            @bind:event="oninput"
+                                            placeholder="مسح أو البحث عن منتج" style="width:540px;">
+
+                                            @if (listAutocomplete != null)
+                                            {
+                                                @if (!string.IsNullOrEmpty(strBarcode))
+                                                {
+                                                    <ul class="options list-group shadow-lg">
+                                                        @if (listAutocomplete.Any())
+                                                        {
+                                                            @foreach (var itemProduct in listAutocomplete)
+                                                            {
+                                                                <li id="focus"
+                                                                class="option list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                                                @onclick="() => OnChangeBarcode(itemProduct.ProductName)">
+                                                                    <span class="option-text fw-bold">@itemProduct.ProductName</span>
+                                                                    <span class="badge bg-primary">@itemProduct.CurrentStock</span>
+                                                                </li>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <li class="option list-group-item disabled text-center">
+                                                                <em>لا توجد نتائج</em>
+                                                            </li>
+                                                        }
+                                                    </ul>
+                                                }
+                                            }
+                                        </div>
+
+                                        <!-- Add Product Button -->
+                                        <button type="button" class="btn btn-light shadow-sm pos_add_quick_product" @onclick="ShowModalProduct">
+                                            <i class="fa fa-plus-circle text-primary"></i>
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* CartHere *@
+                    <!-- Cart Items Table -->
+                    <div class="cart-container" style="max-height: 510px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
+
+                        <table class="table table-striped table-hover table-sm align-middle" style="margin-top: 10px;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="max-width: 280px;">الصنف</th>
+                                    <th style="max-width: 100px;" class="text-center">الكمية</th>
+                                    <th style="max-width: 140px;" class="text-center">السعر</th>
+                                    <th style="max-width: 120px;" class="text-center">نسبة الخصم</th>
+                                    <th style="max-width: 120px;" class="text-end">المجموع</th>
+                                    <th class="text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (productList.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <img src="img/noimage.png" alt="لا توجد أصناف في السلة" class="img-fluid rounded-circle" style="max-width: 80px;">
+                                            <p class="text-muted mt-2">لا توجد أصناف في السلة</p>
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var item in productList)
+                                    {
+                                        <tr>
+                                            <td style="max-width: 280px;">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="fw-bold me-auto">@item.ProductName</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-danger" @onclick="()=>Decrease(item.ProductId)">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                    <input type="text" class="form-control text-center border-dark rounded" style="max-width: 100px;"
+                                                           @bind-value="item.Qty"
+                                                           @onkeyup="@(e => editItem(item.ProductId))"
+                                                           @onchange="@(e => editItem(item.ProductId))"
+                                                           @bind-value:event="oninput">
+                                                    <button class="btn btn-outline-success" @onclick="()=>Increase(item.ProductId)">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="number" class="form-control form-control-sm rounded" style="max-width: 140px;"
+                                                       @bind-value="item.SalesRate"
+                                                       @onkeyup="@(e => editItem(item.ProductId))"
+                                                       @onchange="@(e => editItem(item.ProductId))"
+                                                       @bind-value:event="oninput">
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="number" class="form-control form-control-sm rounded" style="max-width: 120px;"
+                                                       @bind-value="item.Discount"
+                                                       @onkeyup="@(e => editItem(item.ProductId))"
+                                                       @onchange="@(e => editItem(item.ProductId))"
+                                                       @bind-value:event="oninput">
+                                            </td>
+                                            <td class="text-end fw-bold" style="max-width: 160px;">
+                                                @company?.CurrencySymbol @item.Amount
+                                            </td>
+                                            <td class="text-center">
+                                                <button class="btn btn-danger btn-sm rounded-circle" @onclick="()=>DeleteItem(item.ProductId)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                
+
+                    <!-- Payment Section - في الجانب الأيمن -->
+                    @if (master.GrandTotal > 0 && productList.Any())
+                    {
+                        <div class="card mt-2 shadow-sm payment-section">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h6 class="mb-0 fs-6">
+                                    <i class="fas fa-credit-card me-2"></i>
+                                    <span>تفاصيل الدفع</span>
+                                </h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="row g-2">
+                                    <!-- Payment Fields in One Row -->
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold small text-secondary">🔄 طريقة الدفع</label>
+                                        <select class="form-select payment-method-select" @bind="selectedPaymentMethod">
+                                            <option value="Cash" selected>💵 نقدي</option>
+                                            <option value="Card">💳 بطاقة</option>
+                                            <option value="UPI">📱 محفظة</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold small text-primary">💰 المبلغ المستحق</label>
+                                        <div class="total-amount-display">
+                                            <input type="text" value="@($"{company?.CurrencySymbol}{master.GrandTotal}")" 
+                                                   class="form-control text-end fw-bold total-amount-input" readonly>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold small text-info">💳 المبلغ المدفوع</label>
+                                        <input type="number" @bind="paidAmount" @bind:event="oninput" @onkeyup="CalculateChange" @onchange="CalculateChange" 
+                                               class="form-control text-end payment-amount-input" placeholder="أدخل المبلغ المدفوع"
+                                               disabled="@IsShopCustomer()">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold small">
+                                            @if (changeAmount >= 0)
+                                            {
+                                                <span class="text-success">💚 الباقي للإرجاع</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-danger">❗ المبلغ المتبقي</span>
+                                            }
+                                        </label>
+                                        <input type="text" value="@($"{company?.CurrencySymbol}{Math.Abs(changeAmount)}")" 
+                                               class="form-control text-end fw-bold @(changeAmount >= 0 ? "change-amount-positive" : "change-amount-negative")" readonly>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="col-12">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearPayment">
+                                                <i class="fas fa-times me-1"></i> إلغاء
+                                            </button>
+                                            <button type="button" class="btn btn-success btn-sm px-3 payment-button @(isProcessingPayment ? "payment-processing" : "")" @onclick="ProcessPayment" disabled="@(isProcessingPayment)">
+                                                @if (isProcessingPayment)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    <span>جاري المعالجة...</span>
+                                                }
+                                                else
+                                                {
+                                                    @if (selectedPaymentMethod == "Cash")
+                                                    {
+                                                        <i class="fas fa-money-bill-wave me-2"></i>
+                                                        <span>دفع نقدي</span>
+                                                    }
+                                                    else if (selectedPaymentMethod == "Card")
+                                                    {
+                                                        <i class="fas fa-credit-card me-2"></i>
+                                                        <span>دفع بالبطاقة</span>
+                                                    }
+                                                    else if (selectedPaymentMethod == "UPI")
+                                                    {
+                                                        <i class="fas fa-mobile-alt me-2"></i>
+                                                        <span>دفع محفظة</span>
+                                                    }
+                                                }
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsModalVisible)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.CustomerPopup OnButtonClick="CustomerButtonClick" />
+}
+
+@if (IsModalVisibleProduct)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.ProductPopup OnButtonClick="ProductButtonClick" />
+}
+@if (IsModalVisibleCoupon)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.CouponPopUp OnButtonClick="CouponButtonClick" />
+}
+@if (IsModalVisibleCashinHand)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.CashinHandPopUp OnButtonClick="CashInHandButtonClick" />
+}
+
+@if (IsModalVisibleHoldBill)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.HoldBillPopUp OnButtonClick="HoldBillButtonClick" />
+}
+@if (IsModalVisibleRecentTransaction)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.RecentTransactionPopUp OnButtonClick="RecentTransactionButtonClick" />
+}
+@if (IsModalVisibleSalesRegister)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.SalesRegisterPopUp_Arabic />
+}
+@if (IsModalVisiblePrint)
+{
+    <SoftPos.Components.Pages.ComponentsSetting.PrintThermalPrint id="master.SalesMasterId" OnButtonClick="PrintButtonClick" />
+}
+@code
+{
+    private int id { get; set; }
+    string strHoldBill = "Hold";
+    string strCash = "Cash";
+    string strCard = "Card";
+    string strUPI = "UPI";
+    string strCreditSales = "CreditSales";
+    private DateTime currentDateTime = DateTimeHelper.Now; // توقيت القاهرة
+    private SalesMaster master = new SalesMaster();
+    List<Brand> listBrand;
+    List<ProductGroupView> listCategory;
+    List<AccountLedgerView> listLedger;
+    List<Warehouse> listWarehouse;
+    List<ProductView> listProduct;
+    List<ProductView> listProductAll;
+    List<ProductView> listProductAllCategory;
+    List<Tax> listTax;
+    ProductView product = new ProductView();
+    ProductView viewProduct = new ProductView();
+    List<ProductView> productList = new List<ProductView>();
+    private int selectedBrandId = 0;
+    private int selectedCategoryId = 0; // Tracks the currently selected category
+                                        //HoldDeleteItem
+    List<DeleteItem> deleteNo = new List<DeleteItem>();
+    string type;
+    string strBarcode = string.Empty;
+    List<ProductView> listAutocomplete;
+    private CompanyView company;
+    int voucherTypeId = 12; // Sales Invoice Voucher Type
+    SalesRegister register = new();
+    private bool IsModalVisibleCashinHand = false;
+    private bool IsModalVisible = false;
+    private bool IsModalVisibleProduct = false;
+    private bool IsModalVisibleCoupon = false;
+    private bool IsModalVisiblePrint = false;
+    private bool IsModalVisibleCashPayment = false;
+    private bool IsModalVisibleHoldBill = false;
+    private bool IsModalVisibleRecentTransaction = false;
+    private bool IsModalVisibleSalesRegister = false;
+    public int min { get; set; } = 0;
+    public int max { get; set; } = 100000;
+    UserMaster? currentUser;
+    
+    // Payment variables
+    private string selectedPaymentMethod = "Cash";
+    private decimal paidAmount = 0;
+    private decimal changeAmount = 0;
+    private bool isProcessingPayment = false;
+    
+    // Customer balance tracking
+    private decimal selectedCustomerBalance = 0;
+    
+    // دالة للتحقق من العميل ذو الكود 5 (عميل المحل)
+    private bool IsShopCustomer()
+    {
+        var selectedCustomer = listLedger?.FirstOrDefault(c => c.LedgerId == master.LedgerId);
+        return selectedCustomer?.LedgerCode == "5";
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        // تم إلغاء ميزة حفظ السلة في localStorage
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // تأكد من تحديد العميل الأول بعد الـ render
+            if (listLedger != null && listLedger.Any() && master.LedgerId == 0)
+            {
+                master.LedgerId = listLedger.First().LedgerId;
+                StateHasChanged();
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    
+    private async Task LoadData()
+    {
+        try
+        {
+            currentUser = await userService.GetCurrentUser(); // Fetch the current user
+            master.UserId = currentUser.UserId;
+            master.UserName = currentUser.Username;
+            await ShowCashinhand();
+            company = await companyService.GetAllCompaniesByIdAsync(1);
+            listCategory = await categoryService.GetAllProductGroupsAsync();
+            listLedger = await accountledgerService.GetAllAccountLedgersByIdAsync(26);
+            
+            listTax = await taxService.GetAllTaxsAsync();
+            listWarehouse = await warehouseService.GetAllWarehousesAsync();
+            listProduct = await productService.GetAllProductsAsync();
+            listProductAll = listProduct;
+            listProductAllCategory = listProduct;
+            listBrand = await brandService.GetAllBrandsAsync();
+            master.SalesMasterId = 0;
+            master.VoucherTypeId = voucherTypeId;
+            
+            // تعيين أول عميل من القائمة كافتراضي - بدون أي شروط خاصة
+            if (listLedger != null && listLedger.Any())
+            {
+                master.LedgerId = listLedger.First().LedgerId;
+                StateHasChanged(); // تحديث الواجهة لعرض العميل المحدد
+            }
+            else
+            {
+                master.LedgerId = 0;
+            }
+            
+            master.WarehouseId = company.WarehouseId;
+            
+            // استخدام توقيت القاهرة
+            master.Date = DateTimeHelper.Now;
+            master.DueDate = DateTimeHelper.Now;
+            viewProduct.TaxId = 1;
+            master.TaxId = 1;
+            master.Narration = string.Empty;
+            master.Reference = string.Empty;
+            master.CouponAmount = 0;
+            master.ReferenceReceipt = string.Empty;
+            master.NetAmounts = 0;
+            master.TotalTax = 0;
+            master.GrandTotal = 0;
+            master.IsPayment = false;
+            master.PaymentId = 1;
+            master.OrderMasterId = 0;
+            master.Channel = "POS";
+
+            productList.Clear();
+            
+            // Reset payment values
+            paidAmount = 0;
+            changeAmount = 0;
+            selectedPaymentMethod = "Cash";
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    // تم إزالة جميع دوال localStorage (SaveCart, RestoreCart, ClearSavedCart)
+    //CashInHand
+    async Task ShowCashinhand()
+    {
+        if (currentUser != null)
+        {
+            register.UserId = currentUser.UserId;
+            register.OpeningCashAmount = 0;
+            register.ClosingCashAmount = 0;
+            register.OpeningTime = DateTimeHelper.Now;
+            register.ReturnAmount = 0;
+            register.Notes = string.Empty;
+            register.Status = "Open";
+            var result = await _register.CheckNameId(register);
+            if (result == false)
+            {
+                IsModalVisibleCashinHand = true;
+            }
+            StateHasChanged();
+        }
+    }
+    private async void AddFirstRow()
+    {
+        var myItem = new ProductView()
+            {
+                Id = productList.Count() + 1,
+                Qty = 0,
+                ProductId = 0,
+                TaxId = 0,
+                UnitId = 0,
+                BatchId = 0,
+                Discount = 0,
+                TaxRate = 0,
+                GrossAmount = 0,
+                DiscountAmount = 0,
+                NetAmount = 0,
+                TaxAmount = 0,
+                TotalAmount = 0,
+                SalesDetailsId = 0
+            };
+        productList.Add(myItem);
+    }
+
+    private async Task ChangeProduct(string strProductName)
+    {
+        product = listProduct.FirstOrDefault(x => x.ProductName == strProductName);
+        listProductAll = listProduct.Where(u => u.ProductName.ToLower().Contains(strProductName.ToLower())).Take(24).ToList();
+        if (product != null)
+        {
+            if (product.ProductId == 0 || product.UnitId == 0)
+            {
+                //ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Detail = localizer["Invalid Product or Unit"], Duration = 3000 });
+                return;
+            }
+
+            // التحقق من المخزون المتاح
+            var existingQty = productList.FirstOrDefault(p => p.ProductId == product.ProductId)?.Qty ?? 0;
+            var totalQtyNeeded = existingQty + 1;
+            
+            if (product.CurrentStock < totalQtyNeeded)
+            {
+                Snackbar.Add($"المخزون غير كافٍ! المتوفر: {product.CurrentStock}, المطلوب: {totalQtyNeeded}", Severity.Error);
+                return;
+            }
+
+            UpdateTodoList(product);
+            CalculateTotal();
+            strBarcode = string.Empty;
+            listProductAll = null;
+            StateHasChanged();
+        }
+    }
+    private async void UpdateTodoList(ProductView product)
+    {
+        var added = productList.FirstOrDefault(p => p.ProductId == product.ProductId);
+        if (added != null)
+        {
+            added.Qty += 1;
+            added.CalculateRowSalesAmounts(company);
+        }
+        else
+        {
+            product.Id = productList.Count + 1;
+            product.Qty = 1;
+            product.CalculateRowSalesAmounts(company);
+            productList.Add(product);
+        }
+        JSRuntime.InvokeVoidAsync("UpdateTodoList", "/sounds/success.mp3");
+        CalculateTotal();
+        StateHasChanged();
+    }
+    async void editItem(int id)
+    {
+        var myTodo = productList.FirstOrDefault(x => x.ProductId == id);
+
+        if (myTodo != null)
+        {
+            // التحقق من المخزون عند التعديل
+            if (myTodo.Qty > myTodo.CurrentStock)
+            {
+                Snackbar.Add($"الكمية المدخلة ({myTodo.Qty}) أكبر من المخزون المتوفر ({myTodo.CurrentStock})", Severity.Error);
+                myTodo.Qty = myTodo.CurrentStock; // تعيين الكمية للحد الأقصى المتاح
+            }
+            
+            myTodo.CalculateRowSalesAmounts(company);
+            master.CalculateSales(productList, company);
+        }
+
+        CalculateTotal();
+        StateHasChanged();
+    }
+    private async void Increase(int id)
+    {
+        var myTodo = productList.FirstOrDefault(x => x.ProductId == id);
+        if (myTodo != null)
+        {
+            // التحقق من المخزون قبل الزيادة
+            if (myTodo.Qty + 1 > myTodo.CurrentStock)
+            {
+                Snackbar.Add($"المخزون غير كافٍ! المتوفر: {myTodo.CurrentStock}", Severity.Error);
+                return;
+            }
+            
+            if (myTodo.Qty < max)
+            {
+                myTodo.Qty++;
+                myTodo.CalculateRowSalesAmounts(company);
+                master.CalculateSales(productList, company);
+                CalculateTotal(); // تحديث المبلغ المدفوع
+                StateHasChanged();
+            }
+        }
+    }
+    private async void Decrease(int id)
+    {
+        var myTodo = productList.FirstOrDefault(x => x.ProductId == id);
+        if (myTodo != null)
+        {
+            if (myTodo.Qty > 0)
+            {
+                myTodo.Qty--;
+                myTodo.CalculateRowSalesAmounts(company);
+                master.CalculateSales(productList, company);
+                CalculateTotal(); // تحديث المبلغ المدفوع
+                StateHasChanged();
+            }
+        }
+    }
+    private async Task DeleteItem(int id)
+    {
+        var myTodo = productList.FirstOrDefault(x => x.ProductId == id);
+        if (myTodo != null)
+        {
+            if (myTodo.SalesDetailsId == 0)
+            {
+                productList.Remove(myTodo);
+            }
+            else
+            {
+                //HoldId
+                productList.Remove(myTodo);
+                var myHoldId = new DeleteItem
+                    {
+                        SalesDetailsId = myTodo.SalesDetailsId,
+                    };
+                deleteNo.Add(myHoldId);
+            }
+            product = new ProductView();
+            CalculateTotal(); // تحديث المبلغ المدفوع
+        }
+    }
+    void CalculateTotal()
+    {
+        if (master.DisPer <= 0)
+        {
+            master.DisPer = 0;
+        }
+        foreach (var item in productList)
+        {
+
+            item.FlatDiscount = master.DisPer;
+            item.CalculateRowSalesAmounts(company);
+        }
+        master.CalculateSales(productList, company);
+        
+        // تحديث المبلغ المدفوع - إذا كان أول عميل، يكون دفع كامل نقدي
+        // تحديث المبلغ المدفوع ليكون نفس المبلغ المستحق تلقائياً لجميع العملاء
+        paidAmount = master.GrandTotal;
+        CalculateChange();
+    }
+    
+    private async Task ShowModal()
+    {
+        IsModalVisible = true;
+    }
+    private async Task HoldBill()
+    {
+        IsModalVisibleHoldBill = true;
+    }
+    private async Task RecentTransaction()
+    {
+        IsModalVisibleRecentTransaction = true;
+    }
+    private async Task RegisterDetails()
+    {
+        IsModalVisibleSalesRegister = true;
+    }
+    private async Task LoadProducts(int categoryId)
+    {
+        selectedCategoryId = categoryId; // Update the selected category ID
+
+        if (categoryId == 0)
+        {
+            // Load all products if "All Categories" is selected
+            listProduct = await productService.GetAllProductsAsync();
+        }
+        else
+        {
+            // Filter products by the selected category
+            listProduct = listProductAllCategory.Where(p => p.GroupId == categoryId).ToList();
+        }
+
+        // Trigger a UI refresh to reflect changes
+        StateHasChanged();
+    }
+    // Payment Functions
+    private void CalculateChange()
+    {
+        try
+        {
+            // حساب المبلغ المتبقي لجميع العملاء بنفس الطريقة
+            changeAmount = paidAmount - master.GrandTotal;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"خطأ في حساب المبلغ: {ex.Message}");
+        }
+    }
+
+    private void ClearPayment()
+    {
+        paidAmount = master.GrandTotal; // تعيين المبلغ المدفوع للمبلغ المستحق
+        changeAmount = 0;
+        selectedPaymentMethod = "Cash"; // الدفع النقدي افتراضياً لجميع العملاء
+        
+        master.Narration = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task ProcessPayment()
+    {
+        isProcessingPayment = true;
+        StateHasChanged();
+
+        try
+        {
+            // Validation
+            if (!productList.Any())
+            {
+                Snackbar.Add("أضف منتج واحد على الأقل", Severity.Error);
+                return;
+            }
+
+            foreach (var proItem in productList)
+            {
+                if (proItem.Qty == 0)
+                {
+                    Snackbar.Add("لا يمكن إنشاء معاملة بكمية صفر", Severity.Error);
+                    return;
+                }
+            }
+
+            if (master.LedgerId == 0)
+            {
+                Snackbar.Add("اختر عميل صحيح.", Severity.Error);
+                return;
+            }
+
+            if (master.GrandTotal == 0)
+            {
+                Snackbar.Add("المبلغ الإجمالي لا يمكن أن يكون صفر.", Severity.Error);
+                return;
+            }
+
+            if (master.WarehouseId == 0)
+            {
+                Snackbar.Add("اختر مستودع", Severity.Error);
+                return;
+            }
+
+            // شروط خاصة بالعميل ذو الكود 5 (عميل المحل)
+            if (IsShopCustomer())
+            {
+                // عميل المحل يجب أن يدفع كامل المبلغ
+                if (paidAmount != master.GrandTotal)
+                {
+                    Snackbar.Add("عميل المحل يجب أن يدفع كامل المبلغ المستحق", Severity.Error);
+                    return;
+                }
+            }
+
+            if (paidAmount <= 0)
+            {
+                Snackbar.Add("أدخل المبلغ المدفوع", Severity.Error);
+                return;
+            }
+
+            // التحقق من المبلغ المدفوع بناءً على الرصيد السابق
+            decimal maxAllowedPayment;
+            if (selectedCustomerBalance > 0)
+            {
+                // العميل عليه رصيد سابق: يمكنه الدفع حتى (مبلغ الفاتورة + الرصيد السابق)
+                maxAllowedPayment = master.GrandTotal + selectedCustomerBalance;
+                if (paidAmount > maxAllowedPayment)
+                {
+                    Snackbar.Add($"المبلغ المدفوع ({paidAmount:N2}) أكبر من المسموح ({maxAllowedPayment:N2}). الحد الأقصى = مبلغ الفاتورة ({master.GrandTotal:N2}) + الرصيد السابق ({selectedCustomerBalance:N2})", Severity.Error);
+                    return;
+                }
+            }
+            else
+            {
+                // العميل ليس عليه رصيد سابق: لا يمكنه الدفع أكثر من مبلغ الفاتورة
+                maxAllowedPayment = master.GrandTotal;
+                if (paidAmount > maxAllowedPayment)
+                {
+                    Snackbar.Add($"المبلغ المدفوع ({paidAmount:N2}) أكبر من مبلغ الفاتورة المستحق ({maxAllowedPayment:N2})", Severity.Error);
+                    return;
+                }
+            }
+            
+            // Set payment details
+            master.PayAmount = paidAmount;
+            master.BalanceDue = Math.Max(0, master.GrandTotal - paidAmount);
+
+            // Process payment based on method
+            await ProcessPaymentByMethod();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في معالجة الدفع: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessingPayment = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ProcessPaymentByMethod()
+    {
+        var invoice = await invoiceSettingService.GetInvoiceSettingByIdAsync(master.VoucherTypeId);
+        string strSerialNo = await salesInvoiceService.GetSerialNo();
+        master.VoucherNo = $"{invoice.Suffix ?? string.Empty}-{strSerialNo}-{invoice.Prefix ?? string.Empty}";
+        master.SerialNo = strSerialNo;
+
+        // Prepare product details
+        master.listOrder.Clear();
+        foreach (var item in productList)
+        {
+            if (item.ProductId > 0)
+            {
+                var details = new SalesDetails
+                {
+                    ProductId = item.ProductId,
+                    Qty = item.Qty,
+                    UnitId = item.UnitId,
+                    Rate = item.SalesRate,
+                    Discount = item.Discount,
+                    DiscountAmount = item.DiscountAmount,
+                    TaxId = item.TaxId == 0 ? 1 : item.TaxId,
+                    TaxRate = item.TaxRate,
+                    TaxAmount = item.TaxAmount,
+                    BatchId = item.BatchId,
+                    GrossAmount = item.GrossAmount,
+                    NetAmount = item.NetAmount,
+                    Amount = item.Amount,
+                    OrderDetailsId = item.OrderDetailsId
+                };
+                master.listOrder.Add(details);
+            }
+        }
+
+        // Set payment method
+        switch (selectedPaymentMethod)
+        {
+            case "Cash":
+                master.PaymentId = 1;
+                master.PaymentStatus = "Cash";
+                break;
+            case "Card":
+                master.PaymentId = 2;
+                master.PaymentStatus = "Card";
+                break;
+            case "UPI":
+                master.PaymentId = 3;
+                master.PaymentStatus = "UPI";
+                break;
+        }
+
+        master.Status = "Pending";
+
+        // Save the transaction
+        int result = await salesInvoiceService.SaveAsync(master);
+
+        if (result > 0)
+        {
+            // Save receive payment if amount is greater than 0
+            if (paidAmount > 0)
+            {
+                await SaveReceivePaymentAsync(result, paidAmount);
+            }
+
+            // Link sale to open register
+            await LinkSaleToOpenRegister(result, master.PaymentId);
+
+            Snackbar.Add("تم إنشاء فاتورة المبيعات بنجاح.", Severity.Success);
+            
+            // Show print preview modal
+            id = result;
+            master.SalesMasterId = result;
+            IsModalVisiblePrint = true;
+
+            // Don't reset form yet - wait for user decision
+        }
+        else
+        {
+            Snackbar.Add("معاملة غير صحيحة.", Severity.Info);
+        }
+    }
+
+    private async Task SaveReceivePaymentAsync(int salesId, decimal paidAmount)
+    {
+        try
+        {
+            ReceiptMaster paymentMaster = new ReceiptMaster();
+            const int ReceivePaymentVoucherTypeId = 3;
+
+            var invoice = await invoiceSettingService.GetInvoiceSettingByIdAsync(ReceivePaymentVoucherTypeId);
+            string serialNo = await paymentinService.GetSerialNo();
+
+            paymentMaster.Date = DateTimeHelper.Now;
+            paymentMaster.VoucherNo = $"{invoice.Prefix}{serialNo}{invoice.Suffix}";
+            paymentMaster.SerialNo = serialNo;
+            paymentMaster.LedgerId = master.LedgerId;
+            paymentMaster.VoucherTypeId = ReceivePaymentVoucherTypeId;
+            paymentMaster.UserId = master.UserName;
+            paymentMaster.FinancialYearId = company.FinancialYearId;
+            paymentMaster.SalesMasterId = salesId;
+            paymentMaster.Narration = master.Narration ?? string.Empty;
+            paymentMaster.Type = "CustomerPayment";
+            paymentMaster.Status = "Paid";
+            paymentMaster.PaidAmount = paidAmount;
+            paymentMaster.Amount = paidAmount;
+            paymentMaster.AddedDate = DateTimeHelper.Now;
+
+            ReceiptDetails details = new ReceiptDetails
+            {
+                LedgerId = 1,
+                SalesMasterId = salesId,
+                TotalAmount = master.GrandTotal,
+                ReceiveAmount = paidAmount,
+                DueAmount = Math.Max(0, master.GrandTotal - paidAmount)
+            };
+
+            paymentMaster.listOrder.Add(details);
+            int result = await paymentinService.SaveAsync(paymentMaster);
+
+            if (result <= 0)
+            {
+                throw new Exception("فشل في حفظ معلومات الدفع.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"خطأ في حفظ معلومات الدفع: {ex.Message}");
+            throw;
+        }
+    }
+
+    private async Task LinkSaleToOpenRegister(int salesMasterId, int paymentMethodId)
+    {
+        try
+        {
+            Console.WriteLine($"=== ربط المبيعة {salesMasterId} بسجل المبيعات ===");
+            
+            var openRegister = await _register.OpeningCashAsync(master.UserId);
+            
+            if (openRegister != null)
+            {
+                Console.WriteLine($"تم العثور على سجل مفتوح، ID: {openRegister.SalesRegisterId}");
+                
+                var closingBalance = new SalesRegisterClosingBalance
+                {
+                    SalesRegisterId = openRegister.SalesRegisterId,
+                    PaymentMethodId = paymentMethodId,
+                    Amount = paidAmount, // استخدام المبلغ المدفوع فعلياً
+                    SalesMasterId = salesMasterId,
+                    VoucherTypeId = master.VoucherTypeId,
+                    PayLater = Math.Max(0, master.GrandTotal - paidAmount), // المبلغ المتبقي
+                    CreditAppliedAmount = 0,
+                    SalesReturnAmount = 0,
+                    CashReturnAmount = 0,
+                    ClosingAmount = 0,
+                    ExpenseAmount = 0,
+                    PurchasePayment = 0,
+                    CashLeftinDrawer = 0,
+                    PhysicalDrawer = 0,
+                    AddedDate = DateTimeHelper.Now
+                };
+                
+                await _register.AddSaleToRegister(closingBalance);
+                Console.WriteLine($"تم ربط المبيعة بسجل المبيعات بنجاح");
+            }
+            else
+            {
+                Console.WriteLine("لا يوجد سجل مبيعات مفتوح للمستخدم الحالي");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"خطأ في ربط المبيعة بسجل المبيعات: {ex.Message}");
+        }
+    }
+
+    private async Task QuickPayment(string paymentMethod)
+    {
+        // Set payment method and amount to full amount
+        selectedPaymentMethod = paymentMethod;
+        paidAmount = master.GrandTotal;
+        changeAmount = 0;
+        
+        // Process payment immediately
+        await ProcessPayment();
+    }
+
+    private async Task loadProducts(int categoryId)
+    {
+        if (categoryId == 0)
+        {
+            listProduct = await productService.GetAllProductsAsync();
+        }
+        else
+        {
+            listProduct = listProduct.Where(p => p.GroupId == categoryId).ToList();
+        }
+    }
+    private async void Search(ChangeEventArgs e)
+    {
+        // Get the search term from input
+        string strsearch = e.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(strsearch))
+        {
+            // If the search field is empty, load all products
+            listProduct = await productService.GetAllProductsAsync();
+        }
+        else
+        {
+            // Perform case-insensitive partial match search
+            listProduct = listProduct
+                .Where(p => p.ProductName != null &&
+                            p.ProductName.IndexOf(strsearch, StringComparison.OrdinalIgnoreCase) >= 0)
+                .ToList();
+        }
+
+        // Trigger a UI refresh
+        StateHasChanged();
+    }
+    private void OnCustomerChanged()
+    {
+        UpdateCustomerBalance();
+        
+        // إذا كان العميل ذو الكود 5، تعيين المبلغ المدفوع للمبلغ الكامل
+        if (IsShopCustomer())
+        {
+            paidAmount = master.GrandTotal;
+            changeAmount = 0;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private void UpdateCustomerBalance()
+    {
+        var selectedCustomer = listLedger?.FirstOrDefault(c => c.LedgerId == master.LedgerId);
+        selectedCustomerBalance = selectedCustomer?.CurrentBalance ?? 0;
+    }
+    
+    private async void CustomerButtonClick(int intId)
+    {
+        IsModalVisible = false;
+        if (intId > 0)
+        {
+            listLedger = await accountledgerService.GetAllAccountLedgersByIdAsync(26);
+            master.LedgerId = intId;
+            UpdateCustomerBalance();
+        }
+        StateHasChanged();
+    }
+    private async void CashInHandButtonClick(int intId)
+    {
+        IsModalVisibleCashinHand = false;
+        StateHasChanged();
+    }
+    private async void ProductButtonClick(int intId)
+    {
+        IsModalVisibleProduct = false;
+        if (intId > 0)
+        {
+            listProduct = await productService.GetAllProductsAsync();
+        }
+        StateHasChanged();
+    }
+    private async void HoldBillButtonClick(int intId)
+    {
+        IsModalVisibleHoldBill = false;
+        if (intId > 0)
+        {
+            master = await salesInvoiceService.GetByIdAsync(intId);
+            listLedger = await accountledgerService.GetAllAccountLedgersByIdAsync(26);
+            listTax = await taxService.GetAllTaxsAsync();
+            listWarehouse = await warehouseService.GetAllWarehousesAsync();
+            productList = await salesInvoiceService.GetAllBySalesMasterDetails(intId);
+            listProduct = await productService.GetAllProductsAsync();
+        }
+        StateHasChanged();
+    }
+    private async void RecentTransactionButtonClick(int intId)
+    {
+        IsModalVisibleRecentTransaction = false;
+        if (intId > 0)
+        {
+            master = await salesInvoiceService.GetByIdAsync(intId);
+            listLedger = await accountledgerService.GetAllAccountLedgersByIdAsync(26);
+            listTax = await taxService.GetAllTaxsAsync();
+            listWarehouse = await warehouseService.GetAllWarehousesAsync();
+            productList = await salesInvoiceService.GetAllBySalesMasterDetails(intId);
+            listProduct = await productService.GetAllProductsAsync();
+        }
+        StateHasChanged();
+    }
+    private async void PrintButtonClick(int intId)
+    {
+        IsModalVisiblePrint = false;
+        
+        // Reset form after closing print modal
+        await LoadData();
+        ClearPayment();
+        
+        StateHasChanged();
+    }
+    private async void CouponButtonClick(Coupon coupon)
+    {
+        IsModalVisibleCoupon = false;
+        if (coupon !=null)
+        {
+            master.CouponAmount = coupon.Amount;
+            master.CalculateSales(productList, company);
+        }
+        else
+        {
+            master.CouponAmount = 0;
+        }
+        CalculateTotal(); // تحديث المبلغ المدفوع
+        StateHasChanged();
+    }
+    private async void CashPaymentButtonClick(int intId)
+    {
+        IsModalVisibleCashPayment = false;
+        if (intId == 0)
+        {
+
+        }
+        else
+        {
+            // Store invoice ID for printing later
+            if (intId > 0)
+            {
+                id = intId;
+                master.SalesMasterId = intId;
+            }
+            await LoadData();
+        }
+        StateHasChanged();
+    }
+    
+    // دالة لفتح نافذة الطباعة يدوياً
+    private void ShowPrintModal()
+    {
+        if (id > 0 || master.SalesMasterId > 0)
+        {
+            IsModalVisiblePrint = true;
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add("لا توجد فاتورة للطباعة", Severity.Warning);
+        }
+    }
+    //ShowProduct
+    private async Task ShowModalProduct()
+    {
+        IsModalVisibleProduct = true;
+    }
+    //ShowCoupon
+    private async Task ShowModalCoupon()
+    {
+        IsModalVisibleCoupon = true;
+    }
+    //ShowCashInHand
+    private async Task ShowModalCashInHand()
+    {
+        IsModalVisibleCashinHand = true;
+    }
+
+    private async Task OnChangeBarcode(string strProduct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(strProduct))
+            {
+                listAutocomplete = null;
+                return;
+            }
+
+            var strStatus = "Warn";
+            product = listProduct.FirstOrDefault(x => !string.IsNullOrEmpty(x.ProductName) && x.ProductName == strProduct);
+            listAutocomplete = listProduct
+                .Where(u => !string.IsNullOrEmpty(u.ProductName) && u.ProductName.ToLower().Contains(strProduct.ToLower()))
+                .Take(16)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"خطأ في اختيار المنتج: {ex.Message}");
+            Snackbar.Add($"خطأ في اختيار المنتج: {ex.Message}", Severity.Error);
+            listAutocomplete = null;
+            return;
+        }
+        
+        if (product != null)
+        {
+            if (product.ProductId == 0 || product.UnitId == 0)
+            {
+                //ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Detail = "Invalid Product or Unit.", Duration = 3000 });
+                return;
+            }
+
+            // التحقق من المخزون المتاح
+            var existingQty = productList.FirstOrDefault(p => p.ProductId == product.ProductId)?.Qty ?? 0;
+            var totalQtyNeeded = existingQty + 1;
+            
+            if (product.CurrentStock < totalQtyNeeded)
+            {
+                Snackbar.Add($"المخزون غير كافٍ! المتوفر: {product.CurrentStock}, المطلوب: {totalQtyNeeded}", Severity.Error);
+                strBarcode = string.Empty;
+                listAutocomplete = null;
+                StateHasChanged();
+                return;
+            }
+
+            UpdateTodoList(product);
+            CalculateTotal();
+            strBarcode = string.Empty;
+            listAutocomplete = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnChange()
+    {
+        var strStatus = "Warn";
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(strBarcode))
+            {
+                listAutocomplete = null;
+                return;
+            }
+            
+            // البحث بالباركود - مطابقة تامة فقط للإضافة التلقائية
+            product = listProduct.FirstOrDefault(x => !string.IsNullOrEmpty(x.Barcode) && x.Barcode.Equals(strBarcode, StringComparison.OrdinalIgnoreCase));
+            
+            // إذا لم نجد بالباركود، نبحث بكود المنتج (ProductCode)
+            if (product == null)
+            {
+                product = listProduct.FirstOrDefault(x => !string.IsNullOrEmpty(x.ProductCode) && x.ProductCode.Equals(strBarcode, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            // إذا وجدنا مطابقة تامة، نضيف المنتج مباشرة
+            if (product != null)
+            {
+                if (product.ProductId == 0 || product.UnitId == 0)
+                {
+                    return;
+                }
+
+                if (product.CurrentStock <= 0)
+                {
+                    if (strStatus == "Reject")
+                    {
+                        return;
+                    }
+                    if (strStatus == "Warn" && !await ConfirmAsync("يوجد كمية مخزون سالبة، هل تريد المتابعة؟"))
+                    {
+                        return;
+                    }
+                }
+
+                UpdateTodoList(product);
+                CalculateTotal();
+                strBarcode = string.Empty;
+                listAutocomplete = null;
+                StateHasChanged();
+                return;
+            }
+            
+            // إذا لم نجد مطابقة تامة، نعرض قائمة الاقتراحات فقط
+            // البحث بالباركود (جزئي)
+            listAutocomplete = listProduct
+                .Where(u => !string.IsNullOrEmpty(u.Barcode) && u.Barcode.ToLower().Contains(strBarcode.ToLower()))
+                .Take(16)
+                .ToList();
+            
+            // إذا لم نجد نتائج بالباركود، نبحث بكود المنتج
+            if (!listAutocomplete.Any())
+            {
+                listAutocomplete = listProduct
+                    .Where(u => !string.IsNullOrEmpty(u.ProductCode) && u.ProductCode.ToLower().Contains(strBarcode.ToLower()))
+                    .Take(16)
+                    .ToList();
+            }
+            
+            // إذا لم نجد نتائج بكود المنتج، نبحث بالاسم
+            if (!listAutocomplete.Any())
+            {
+                listAutocomplete = listProduct
+                    .Where(u => !string.IsNullOrEmpty(u.ProductName) && u.ProductName.ToLower().Contains(strBarcode.ToLower()))
+                    .Take(16)
+                    .ToList();
+            }
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"خطأ في البحث: {ex.Message}");
+            Snackbar.Add($"خطأ في البحث: {ex.Message}", Severity.Error);
+            listAutocomplete = null;
+            return;
+        }
+    }
+    private async Task<bool> ConfirmAsync(string message)
+    {
+        return await JSRuntime.InvokeAsync<bool>("confirm", message);
+    }
+    
+    // تم نقل هذه الدالة للأعلى ودمجها مع UpdateCustomerBalance
+    
+    private void OnCustomerChangedEvent(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out int customerId))
+        {
+            master.LedgerId = customerId;
+            OnCustomerChanged();
+        }
+    }
+    
+    // تم إزالة دالة UpdateFirstCustomerStatus - لا توجد شروط خاصة بالعميل الأول
+    
+    private void Logout()
+    {
+        userService.Logout();
+        NavigationManager.NavigateTo("/login");
+    }
+}
+
+<style>
+    /* تنسيق المبلغ المستحق ليكون واضح للكاشير */
+    .total-amount-display {
+        position: relative;
+        margin-top: 5px;
+    }
+
+    .total-amount-input {
+        font-size: 1.8rem !important;
+        font-weight: 900 !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        border: 3px solid #155724 !important;
+        border-radius: 12px !important;
+        padding: 15px 20px !important;
+        text-align: center !important;
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3) !important;
+        animation: pulse-glow 2s infinite;
+        min-height: 65px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .total-amount-input:focus {
+        outline: none !important;
+        box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.5) !important;
+    }
+
+    /* تأثير النبض والتوهج */
+    @@keyframes pulse-glow {
+        0% {
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+            transform: scale(1);
+        }
+        50% {
+            box-shadow: 0 12px 35px rgba(40, 167, 69, 0.5);
+            transform: scale(1.02);
+        }
+        100% {
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+            transform: scale(1);
+        }
+    }
+
+    /* تحسين عرض المبلغ المدفوع */
+    .payment-amount-input {
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+        color: #495057 !important;
+        background-color: #f8f9fa !important;
+        border: 2px solid #007bff !important;
+        border-radius: 8px !important;
+        padding: 12px 15px !important;
+        min-height: 50px !important;
+    }
+
+    .payment-amount-input:focus {
+        border-color: #0056b3 !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25) !important;
+        background-color: #ffffff !important;
+    }
+
+    /* تحسين عرض المبلغ المتبقي */
+    .change-amount-positive {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        color: #ffffff !important;
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        border: 2px solid #155724 !important;
+        border-radius: 8px !important;
+        padding: 10px 15px !important;
+    }
+
+    .change-amount-negative {
+        background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%) !important;
+        color: #ffffff !important;
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        border: 2px solid #721c24 !important;
+        border-radius: 8px !important;
+        padding: 10px 15px !important;
+    }
+
+    /* تحسين تسميات الحقول */
+    .payment-section .form-label {
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* تحسين قسم الدفع بالكامل */
+    .payment-section .card-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+        border-bottom: 3px solid #004085 !important;
+    }
+
+    .payment-section .card-body {
+        background-color: #f8f9fa !important;
+        border-radius: 0 0 8px 8px !important;
+    }
+
+    /* تحسين أزرار الدفع */
+    .payment-button {
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+        padding: 12px 25px !important;
+        border-radius: 8px !important;
+        min-width: 150px !important;
+    }
+
+    /* تنسيق خاص لعميل المحل */
+    .shop-customer-indicator {
+        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+        color: #212529 !important;
+        font-weight: 700 !important;
+        border: 2px solid #e0a800 !important;
+        border-radius: 6px !important;
+        padding: 4px 8px !important;
+        font-size: 0.85rem !important;
+        animation: shop-customer-glow 2s infinite;
+    }
+
+    @@keyframes shop-customer-glow {
+        0% {
+            box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+        }
+        50% {
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.8);
+        }
+        100% {
+            box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+        }
+    }
+
+    /* تنسيق الحقول المعطلة لعميل المحل */
+    .form-select:disabled,
+    .form-control:disabled {
+        background-color: #f8f9fa !important;
+        border-color: #dee2e6 !important;
+        opacity: 0.8 !important;
+    }
+
+    .form-control[readonly] {
+        background-color: #e9ecef !important;
+        border-color: #ced4da !important;
+    }
+    }
+
+    .payment-processing {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+        border-color: #495057 !important;
+    }
+
+    /* تحسين اختيار طريقة الدفع */
+    .payment-method-select {
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+        padding: 10px 15px !important;
+        border: 2px solid #6c757d !important;
+        border-radius: 8px !important;
+        background-color: #ffffff !important;
+    }
+
+    .payment-method-select:focus {
+        border-color: #495057 !important;
+        box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.25) !important;
+    }
+
+    /* تأثيرات إضافية للمبلغ المستحق */
+    .total-amount-display::before {
+        content: "💰";
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        font-size: 1.5rem;
+        z-index: 10;
+        animation: bounce 1s infinite;
+    }
+
+    @@keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-10px);
+        }
+        60% {
+            transform: translateY(-5px);
+        }
+    }
+
+    /* تحسين الاستجابة للشاشات الصغيرة */
+    @@media (max-width: 768px) {
+        .total-amount-input {
+            font-size: 1.5rem !important;
+            padding: 12px 15px !important;
+            min-height: 55px !important;
+        }
+        
+        .payment-amount-input {
+            font-size: 1.1rem !important;
+            min-height: 45px !important;
+        }
+    }
+</style>

@@ -1,0 +1,149 @@
+﻿@page "/license-activation"
+@using SoftPos.Services
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>تفعيل الترخيص</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-6" Elevation="3">
+        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-4">
+            🔐 تفعيل الترخيص
+        </MudText>
+
+        @if (!isActivated)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                <strong>⚠️ البرنامج غير مفعّل على هذا الجهاز</strong>
+            </MudAlert>
+
+            <MudText Typo="Typo.body1" Class="mb-2">
+                <strong>معرف الجهاز (Hardware ID):</strong>
+            </MudText>
+
+            <MudTextField @bind-Value="hardwareId" 
+                          Label="Hardware ID" 
+                          Variant="Variant.Outlined" 
+                          ReadOnly="true"
+                          Lines="3"
+                          Class="mb-3" />
+
+            <MudText Typo="Typo.body2" Color="Color.Info" Class="mb-4">
+                💡 <strong>تعليمات:</strong><br/>
+                1. انسخ معرف الجهاز أعلاه<br/>
+                2. أرسله للمطور للحصول على ملف الترخيص<br/>
+                3. أو اضغط "تفعيل" للتفعيل المباشر (للاختبار)
+            </MudText>
+
+            <MudDivider Class="my-4" />
+
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Success" 
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="ActivateLicense"
+                       StartIcon="@Icons.Material.Filled.Check">
+                ✅ تفعيل البرنامج على هذا الجهاز
+            </MudButton>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                <strong>✅ البرنامج مفعّل بنجاح على هذا الجهاز</strong>
+            </MudAlert>
+
+            <MudList T="string" Dense="true">
+                <MudListItem T="string" Icon="@Icons.Material.Filled.CalendarToday">
+                    <strong>تاريخ التفعيل:</strong> @activationDate?.ToString("dd/MM/yyyy - hh:mm tt")
+                </MudListItem>
+                <MudListItem T="string" Icon="@Icons.Material.Filled.Computer">
+                    <strong>معرف الجهاز:</strong> @(hardwareId?.Length > 30 ? hardwareId?.Substring(0, 30) + "..." : hardwareId)
+                </MudListItem>
+            </MudList>
+
+            <MudDivider Class="my-4" />
+
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Href="/"
+                       StartIcon="@Icons.Material.Filled.Home">
+                🏠 الذهاب للصفحة الرئيسية
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Error" 
+                       FullWidth="true"
+                       OnClick="DeactivateLicense"
+                       StartIcon="@Icons.Material.Filled.Delete"
+                       Class="mt-2">
+                🗑️ إلغاء التفعيل (للاختبار فقط)
+            </MudButton>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">
+            📋 معلومات مهمة:
+        </MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Info">
+                الترخيص مرتبط بمكونات الجهاز (اللوحة الأم، المعالج، القرص الصلب)
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Warning">
+                نقل البرنامج لجهاز آخر يتطلب ترخيص جديد
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Security">
+                ملف الترخيص مشفّر ولا يمكن التلاعب به
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Block">
+                تغيير مكونات الجهاز قد يتطلب إعادة التفعيل
+            </MudListItem>
+        </MudList>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool isActivated = false;
+    private string? hardwareId;
+    private DateTime? activationDate;
+
+    protected override void OnInitialized()
+    {
+        CheckLicenseStatus();
+    }
+
+    private void CheckLicenseStatus()
+    {
+        var licenseInfo = LicenseService.GetLicenseInfo();
+        isActivated = licenseInfo.IsValid;
+        hardwareId = licenseInfo.HardwareId;
+        activationDate = licenseInfo.ActivationDate;
+    }
+
+    private void ActivateLicense()
+    {
+        if (LicenseService.GenerateLicense())
+        {
+            Snackbar.Add("✅ تم تفعيل البرنامج بنجاح!", Severity.Success);
+            CheckLicenseStatus();
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add("❌ فشل التفعيل. حاول مرة أخرى.", Severity.Error);
+        }
+    }
+
+    private void DeactivateLicense()
+    {
+        if (LicenseService.DeleteLicense())
+        {
+            Snackbar.Add("تم إلغاء التفعيل", Severity.Info);
+            isActivated = false;
+            activationDate = null;
+            StateHasChanged();
+        }
+    }
+}

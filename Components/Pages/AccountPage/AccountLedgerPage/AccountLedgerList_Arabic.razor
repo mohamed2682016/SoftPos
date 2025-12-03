@@ -1,0 +1,108 @@
+@page "/account-ledger-ar"
+@inject AccountLedgerService accountLedgerService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>دفتر الحسابات</h4>
+        </div>
+        <div class="col text-start">
+            <a class="btn btn-primary" href="/account-ledger/add-ar">
+                <i class="fas fa-plus me-2"></i> إضافة حساب
+            </a>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col">
+            <div class="table-responsive">
+                <MudTable Items="@listAccountLedger" Dense="@dense" Hover="@hover">
+
+                    <HeaderContent>
+                        <MudTh>اسم الحساب</MudTh>
+                        <MudTh>اسم مجموعة الحساب</MudTh>
+                        <MudTh>الرصيد الافتتاحي</MudTh>
+                        <MudTh>مدين/دائن</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="LedgerName" Style="width:400px;">@context.LedgerName</MudTd>
+                        <MudTd DataLabel="AccountGroupName" Style="width:340px;">@context.AccountGroupName</MudTd>
+                        <MudTd DataLabel="OpeningBalance" Style="width:240px;">@context.OpeningBalance</MudTd>
+                        <MudTd DataLabel="CrOrDr">@context.CrOrDr</MudTd>
+                        <MudTd DataLabel="">
+                            <div class="d-flex justify-content-start">
+                                <a class="btn btn-warning btn-sm me-2" href="/account-ledger/@context.LedgerId-ar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-danger btn-sm" @onclick="() => Delete(context.LedgerId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private List<AccountLedgerView> listAccountLedger = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listAccountLedger = await accountLedgerService.GetAllAccountLedgersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task Delete(int id)
+    {
+        try
+        {
+            // Show a confirmation dialog to the user
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذا الحساب؟");
+
+            if (!confirmed)
+            {
+                return; // User canceled the action
+            }
+
+            // Attempt to delete the AccountLedger
+            bool isDeleted = await accountLedgerService.DeleteAccountLedgerAsync(id);
+
+            if (isDeleted == true)
+            {
+                Snackbar.Add("تم حذف الحساب بنجاح.", Severity.Success);
+                await LoadData(); // Reload the data after successful deletion
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف الحساب لأنه مستخدم في العمليات.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف الحساب: {ex.Message}", Severity.Error);
+        }
+    }
+}

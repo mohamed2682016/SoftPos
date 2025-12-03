@@ -1,0 +1,571 @@
+﻿@page "/waste-ar"
+@inject WasteService wasteService
+@inject ProductService productService
+@inject WarehouseService warehouseService
+@inject UserService userService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@using SoftPos.Data.InventoryModel
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4 class="text-primary fw-bold">إدارة الهالك</h4>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowModal">
+                <i class="fas fa-plus me-2"></i> إضافة هالك جديد
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- From Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">من تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="FromDate" />
+                            </div>
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">إلى تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="ToDate" />
+                            </div>
+                        </div>
+
+                        <!-- Waste Type -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">نوع الهالك</label>
+                                <select class="form-control" @bind="SelectedWasteType">
+                                    <option value="">جميع الأنواع</option>
+                                    <option value="Expired">منتهي الصلاحية</option>
+                                    <option value="Damaged">تالف</option>
+                                    <option value="Stolen">مسروق</option>
+                                    <option value="Other">أخرى</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Product -->
+                        <div class="col-lg-3 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">المنتج</label>
+                                <select class="form-control" @bind="SelectedProductId">
+                                    <option value="0">جميع المنتجات</option>
+                                    @if (listProducts != null)
+                                    {
+                                        @foreach (var item in listProducts)
+                                        {
+                                            <option value="@item.ProductId">@item.ProductName</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Search Button -->
+                        <div class="col-lg-2 col-sm-6 col-12 align-self-end">
+                            <button class="btn btn-primary w-100" @onclick="Filter">
+                                <i class="fas fa-search me-2"></i> بحث
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">إجمالي الهالك</h6>
+                            <h4>@TotalWaste.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-trash fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">منتهي الصلاحية</h6>
+                            <h4>@ExpiredWaste.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-times fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">تالف</h6>
+                            <h4>@DamagedWaste.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">مسروق</h6>
+                            <h4>@StolenWaste.ToString("F2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-secret fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle">
+                        <thead class="table-primary">
+                            <tr>
+                                <th scope="col">المنتج</th>
+                                <th scope="col">الكمية</th>
+                                <th scope="col">سعر الوحدة</th>
+                                <th scope="col">المجموع</th>
+                                <th scope="col">نوع الهالك</th>
+                                <th scope="col">السبب</th>
+                                <th scope="col">التاريخ</th>
+                                <th scope="col">الحالة</th>
+                                <th scope="col">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (listWaste == null || !listWaste.Any())
+                            {
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <div>
+                                            <i class="fas fa-exclamation-circle fs-1 text-warning"></i>
+                                            <h5 class="mt-2">لا توجد بيانات</h5>
+                                            <p class="mb-2">لا توجد سجلات هالك في النطاق الزمني المحدد</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in listWaste)
+                                {
+                                    <tr>
+                                        <td>@GetProductName(item.ProductId)</td>
+                                        <td>@item.Quantity.ToString("F2")</td>
+                                        <td>@item.UnitPrice.ToString("F2")</td>
+                                        <td><strong>@item.TotalAmount.ToString("F2")</strong></td>
+                                        <td>
+                                            <span class="badge @GetWasteTypeBadgeClass(item.WasteType)">
+                                                @GetWasteTypeText(item.WasteType)
+                                            </span>
+                                        </td>
+                                        <td>@item.Reason</td>
+                                        <td>@item.WasteDate.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <span class="badge @(item.IsApproved ? "bg-success" : "bg-warning")">
+                                                @(item.IsApproved ? "معتمد" : "غير معتمد")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" @onclick="() => Edit(item.WasteId)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => Delete(item.WasteId)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                @if (!item.IsApproved)
+                                                {
+                                                    <button class="btn btn-outline-success" @onclick="() => Approve(item.WasteId)">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+@if (IsModalVisible)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@ModalTitle</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">المنتج</label>
+                            <select class="form-control" @bind="waste.ProductId">
+                                <option value="0">اختر المنتج</option>
+                                @if (listProducts != null)
+                                {
+                                    @foreach (var item in listProducts)
+                                    {
+                                        <option value="@item.ProductId">@item.ProductName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">نوع الهالك</label>
+                            <select class="form-control" @bind="waste.WasteType">
+                                <option value="Expired">منتهي الصلاحية</option>
+                                <option value="Damaged">تالف</option>
+                                <option value="Stolen">مسروق</option>
+                                <option value="Other">أخرى</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">الكمية</label>
+                            <input type="number" class="form-control" @bind="waste.Quantity" step="0.01" @oninput="CalculateTotal" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">سعر الوحدة</label>
+                            <input type="number" class="form-control" @bind="waste.UnitPrice" step="0.01" @oninput="CalculateTotal" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">المجموع</label>
+                            <input type="number" class="form-control" @bind="waste.TotalAmount" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">التاريخ</label>
+                            <InputDate class="form-control" @bind-Value="waste.WasteDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">المستودع</label>
+                            <select class="form-control" @bind="waste.WarehouseId">
+                                <option value="0">اختر المستودع</option>
+                                @if (listWarehouses != null)
+                                {
+                                    @foreach (var item in listWarehouses)
+                                    {
+                                        <option value="@item.WarehouseId">@item.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">المرجع</label>
+                            <input type="text" class="form-control" @bind="waste.Reference" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">السبب</label>
+                            <textarea class="form-control" rows="2" @bind="waste.Reason"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea class="form-control" rows="2" @bind="waste.Notes"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" @onclick="Save">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    List<Waste> listWaste = new();
+    List<ProductView> listProducts = new();
+    List<Warehouse> listWarehouses = new();
+    Waste waste = new();
+    DateTime FromDate = DateTimeHelper.Now.AddDays(-30);
+    DateTime ToDate = DateTimeHelper.Now;
+    string SelectedWasteType = "";
+    int SelectedProductId = 0;
+    bool IsModalVisible = false;
+    string ModalTitle = "";
+    decimal TotalWaste = 0;
+    decimal ExpiredWaste = 0;
+    decimal DamagedWaste = 0;
+    decimal StolenWaste = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listProducts = await productService.GetAllProductsAsync();
+            listWarehouses = await warehouseService.GetAllWarehousesAsync();
+            listWaste = await wasteService.GetAllWasteAsync();
+            await Filter();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Filter()
+    {
+        try
+        {
+            listWaste = await wasteService.GetWasteByDateRangeAsync(FromDate, ToDate);
+            
+            if (!string.IsNullOrEmpty(SelectedWasteType))
+            {
+                listWaste = listWaste.Where(w => w.WasteType == SelectedWasteType).ToList();
+            }
+            
+            if (SelectedProductId > 0)
+            {
+                listWaste = listWaste.Where(w => w.ProductId == SelectedProductId).ToList();
+            }
+
+            CalculateTotals();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الفلترة: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CalculateTotals()
+    {
+        TotalWaste = listWaste.Sum(w => w.TotalAmount);
+        ExpiredWaste = listWaste.Where(w => w.WasteType == "Expired").Sum(w => w.TotalAmount);
+        DamagedWaste = listWaste.Where(w => w.WasteType == "Damaged").Sum(w => w.TotalAmount);
+        StolenWaste = listWaste.Where(w => w.WasteType == "Stolen").Sum(w => w.TotalAmount);
+    }
+
+    private void CalculateTotal()
+    {
+        waste.TotalAmount = waste.Quantity * waste.UnitPrice;
+    }
+
+    private async Task ShowModal()
+    {
+        ModalTitle = "إضافة هالك جديد";
+        await Reset();
+        IsModalVisible = true;
+    }
+
+    private async Task Reset()
+    {
+        waste = new Waste
+        {
+            WasteDate = DateTimeHelper.Now,
+            WasteType = "Other"
+        };
+    }
+
+    private async Task Edit(int id)
+    {
+        try
+        {
+            ModalTitle = "تعديل الهالك";
+            waste = await wasteService.GetWasteByIdAsync(id);
+            IsModalVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذا الهالك؟");
+            if (confirmed)
+            {
+                bool result = await wasteService.DeleteWasteAsync(id);
+                if (result)
+                {
+                    Snackbar.Add("تم حذف الهالك بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("فشل في حذف الهالك", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الحذف: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Approve(int id)
+    {
+        try
+        {
+            var currentUser = await userService.GetCurrentUser();
+            if (currentUser != null)
+            {
+                bool result = await wasteService.ApproveWasteAsync(id, currentUser.UserId);
+                if (result)
+                {
+                    Snackbar.Add("تم اعتماد الهالك بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("فشل في اعتماد الهالك", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الاعتماد: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (waste.ProductId == 0)
+            {
+                Snackbar.Add("يرجى اختيار المنتج", Severity.Warning);
+                return;
+            }
+
+            if (waste.Quantity <= 0)
+            {
+                Snackbar.Add("يرجى إدخال كمية صحيحة", Severity.Warning);
+                return;
+            }
+
+            if (waste.UnitPrice <= 0)
+            {
+                Snackbar.Add("يرجى إدخال سعر صحيح", Severity.Warning);
+                return;
+            }
+
+            var currentUser = await userService.GetCurrentUser();
+            if (currentUser != null)
+            {
+                waste.UserId = currentUser.UserId;
+            }
+
+            int result;
+            if (waste.WasteId == 0)
+            {
+                result = await wasteService.AddWasteAsync(waste);
+                if (result > 0)
+                {
+                    Snackbar.Add("تم إضافة الهالك بنجاح", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("فشل في إضافة الهالك", Severity.Error);
+                }
+            }
+            else
+            {
+                bool updateResult = await wasteService.UpdateWasteAsync(waste);
+                if (updateResult)
+                {
+                    Snackbar.Add("تم تحديث الهالك بنجاح", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("فشل في تحديث الهالك", Severity.Error);
+                }
+            }
+
+            CloseModal();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في الحفظ: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        IsModalVisible = false;
+    }
+
+    private string GetWasteTypeText(string wasteType)
+    {
+        return wasteType switch
+        {
+            "Expired" => "منتهي الصلاحية",
+            "Damaged" => "تالف",
+            "Stolen" => "مسروق",
+            "Other" => "أخرى",
+            _ => wasteType
+        };
+    }
+
+    private string GetWasteTypeBadgeClass(string wasteType)
+    {
+        return wasteType switch
+        {
+            "Expired" => "bg-warning",
+            "Damaged" => "bg-info",
+            "Stolen" => "bg-secondary",
+            "Other" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetProductName(int productId)
+    {
+        var product = listProducts?.FirstOrDefault(p => p.ProductId == productId);
+        return product?.ProductName ?? "غير محدد";
+    }
+}

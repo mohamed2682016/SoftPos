@@ -1,0 +1,186 @@
+﻿@page "/purchase-ar"
+@inject PurchaseInvoiceService purchaseinvoiceService
+@inject AccountLedgerService accountledgerService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>فواتير المشتريات</h4>
+        </div>
+        <div class="col text-start">
+            <a class="btn btn-primary" href="/purchase/add">
+                <i class="fas fa-plus me-2"></i> إضافة فاتورة
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <!-- From Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label>من تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="fromDate" />
+                            </div>
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label>إلى تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="endDate" />
+                            </div>
+                        </div>
+
+                        <!-- Supplier Dropdown -->
+                        <div class="col-lg-4 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label>المورد</label>
+                                <select class="form-select" @bind="ledgerId">
+                                    <option value="0">اختر</option>
+                                    @if (listAccountLedger != null)
+                                    {
+                                        @foreach (var supplier in listAccountLedger)
+                                        {
+                                            <option value="@supplier.LedgerId">@supplier.LedgerName</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Status Dropdown -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label>الحالة</label>
+                                <select class="form-select" @bind="strStatus">
+                                    <option value="All">الكل</option>
+                                    <option value="Pending">معلقة</option>
+                                    <option value="Active">نشطة</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Search Button -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group" style="margin-top: 20px;">
+                                <button class="btn btn-primary" @onclick="LoadData">
+                                    <i class="fas fa-search"></i> بحث
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Section -->
+                <MudTable Items="listPurchaseInvoice" Dense="dense" Hover="hover">
+                    <HeaderContent>
+                        <MudTh>التاريخ</MudTh>
+                        <MudTh>رقم الفاتورة</MudTh>
+                        <MudTh>اسم المورد</MudTh>
+                        <MudTh>المبلغ</MudTh>
+                        <MudTh>الحالة</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Date">@context.Date</MudTd>
+                        <MudTd DataLabel="VoucherNo">@context.VoucherNo</MudTd>
+                        <MudTd DataLabel="LedgerName">@context.LedgerName</MudTd>
+                        <MudTd DataLabel="GrandTotal">@context.GrandTotal</MudTd>
+                        <MudTd DataLabel="Status">@context.Status</MudTd>
+                        <MudTd DataLabel="">
+                            <!-- Dropdown Actions -->
+                            <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bars me-1"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="/purchase/details/@context.PurchaseMasterId">
+                                    <i class="fas fa-eye"></i> عرض
+                                </a>
+                                <a class="dropdown-item" href="/purchase/edit/@context.PurchaseMasterId">
+                                    <i class="fas fa-edit"></i> تعديل
+                                </a>
+
+                                <a class="dropdown-item" href="/purchase-return/add/@context.PurchaseMasterId">
+                                    <i class="fa fa-angle-double-left"></i> مرتجع مشتريات
+                                </a>
+                                <a class="dropdown-item text-danger" @onclick="() => Delete(context)">
+                                    <i class="fas fa-trash"></i> حذف
+                                </a>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private List<PurchaseMasterView> listPurchaseInvoice = new();
+    private List<AccountLedgerView> listAccountLedger = new();
+    private DateTime fromDate { get; set; }
+    private DateTime endDate { get; set; } 
+    private int ledgerId = 0;
+    private string strStatus = "All";
+
+    protected override async Task OnInitializedAsync()
+    {
+        listAccountLedger = await accountledgerService.GetAllAccountLedgersByIdAsync(22);
+        fromDate = DateTimeHelper.Now.AddDays(-7);
+        endDate = DateTimeHelper.Now;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listPurchaseInvoice = await purchaseinvoiceService.PurchaseInvoiceSearchAsync(fromDate, endDate, ledgerId, strStatus);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(PurchaseMasterView view)
+    {
+        try
+        {
+            // Show a confirmation dialog
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف فاتورة المشتريات هذه؟");
+            if (!confirmed) return;
+
+            // Attempt to delete the purchase
+            bool isDeleted = await purchaseinvoiceService.DeletePurchaseInvoiceAsync(view);
+
+            if (isDeleted)
+            {
+                Snackbar.Add("تم حذف فاتورة المشتريات بنجاح.", Severity.Success);
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف فاتورة المشتريات لأنها مستخدمة في العمليات.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف فاتورة المشتريات: {ex.Message}", Severity.Error);
+        }
+    }
+}

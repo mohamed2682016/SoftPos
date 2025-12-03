@@ -1,0 +1,228 @@
+﻿@page "/supplier/add-ar"
+@page "/supplier/{id:int}-ar"
+@inject AccountLedgerService accountLedgerService
+@inject AccountGroupService accountGroupService
+@inject NavigationManager NavigationManager
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>المورد</h4>
+        </div>
+        <div class="col text-start">
+            <a class="btn btn-primary" href="/supplier-ar">
+                <i class="fas fa-arrow-right me-2"></i> رجوع
+            </a>
+        </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="row">
+        <EditForm Model="model" OnValidSubmit="Save">
+								<DataAnnotationsValidator />
+								<div class="row">
+									<div class="col-lg-8 col-sm-6 col-12">
+										<div class="form-group">
+						<label>اسم المورد</label>
+											<input type="text" class="form-control" @bind="model.LedgerName">
+											<ValidationMessage For="@(() => model.LedgerName)" />
+										</div>
+									</div>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>الكود</label>
+						<input type="text" class="form-control" @bind="model.LedgerCode" readonly>
+											<ValidationMessage For="@(() => model.LedgerCode)" />
+										</div>
+									</div>
+									<div class="col-lg-8 col-sm-6 col-12">
+										<div class="form-group">
+											<label>العنوان</label>
+						<input type="text" class="form-control" @bind="model.Address">
+											<ValidationMessage For="@(() => model.Address)" />
+										</div>
+									</div>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>الرقم الضريبي</label>
+						<input type="text" class="form-control" @bind="model.TaxNo">
+											<ValidationMessage For="@(() => model.TaxNo)" />
+										</div>
+									</div>
+									<hr />
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>الهاتف</label>
+						<input type="text" class="form-control" @bind="model.Phone">
+											<ValidationMessage For="@(() => model.Phone)" />
+										</div>
+									</div>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>البلد</label>
+						<input type="text" class="form-control" @bind="model.Country">
+											<ValidationMessage For="@(() => model.Country)" />
+										</div>
+									</div>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>المدينة</label>
+						<input type="text" class="form-control" @bind="model.City">
+											<ValidationMessage For="@(() => model.City)" />
+										</div>
+									</div>
+									<hr/>
+									<h6>حقول إضافية</h6>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>البريد الإلكتروني</label>
+						<input type="text" class="form-control" @bind="model.Email">
+											<ValidationMessage For="@(() => model.Email)" />
+										</div>
+									</div>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>فترة الائتمان</label>
+						<input type="text" class="form-control" @bind="model.CreditPeriod">
+											<ValidationMessage For="@(() => model.CreditPeriod)" />
+										</div>
+									</div>
+									<div class="col-lg-4 col-sm-6 col-12">
+										<div class="form-group">
+											<label>حد الائتمان</label>
+						<input type="text" class="form-control" @bind="model.CreditLimit">
+											<ValidationMessage For="@(() => model.CreditLimit)" />
+										</div>
+									</div>
+									<div class="col-lg-3 col-sm-6 col-12">
+										<div class="form-group">
+											<label>الرصيد الافتتاحي</label>
+						<input type="text" class="form-control" @bind="model.OpeningBalance">
+
+											<ValidationMessage For="@(() => model.OpeningBalance)" />
+										</div>
+									</div>
+									<div class="col-lg-3 col-sm-6 col-12">
+										<div class="form-group">
+											<label>تاريخ الافتتاح</label>
+						<InputDate class="form-control" @bind-Value="@model.OpeningDate" />
+
+											<ValidationMessage For="@(() => model.OpeningDate)" />
+										</div>
+									</div>
+									<div class="col-lg-1 col-sm-6 col-12">
+										<select @bind="model.CrOrDr" class="form-select" style="margin-top:30px;">
+											<option value="Dr">مدين</option>
+											<option value="Cr">دائن</option>
+										</select>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-lg-12">
+
+											<div class="column-5">
+												<button type="submit" class="btn btn-secondary">حفظ</button>
+						<a href="/supplier-ar" class="btn btn-secondary">إلغاء</a>
+											</div>
+									</div>
+								</div>
+							</EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+    private AccountLedger model = new AccountLedger();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            if(id == 0)
+            {
+                int strSerialNo = await accountLedgerService.GetSerialNo();
+                model.LedgerId = strSerialNo;
+                model.LedgerCode = strSerialNo.ToString();
+                model.AccountGroupId = 22;
+                model.LedgerId = 0;
+                model.LedgerName = string.Empty;
+                model.Phone = string.Empty;
+                model.Email = string.Empty;
+                model.Address = string.Empty;
+                model.Country = string.Empty;
+                model.City = string.Empty;
+                model.TaxNo = string.Empty;
+                model.ShippingAddress = string.Empty;
+                model.CreditLimit = 0;
+                model.CreditPeriod = 0;
+                model.OpeningBalance = 0;
+                model.ShippingAddress = string.Empty;
+                model.CrOrDr = "Dr";
+                model.IsDefault = false;
+                model.BankName = string.Empty;
+                model.BranchName = string.Empty;
+                model.BankIFSCCode = string.Empty;
+                model.AccountName = string.Empty;
+                model.AccountNo = string.Empty;
+                model.OpeningDate = DateTimeHelper.Now;
+                StateHasChanged();
+            }
+            else
+            {
+                model = await accountLedgerService.GetAccountLedgerByIdAsync(id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task Save()
+    {
+        try
+        {
+            if (model.LedgerId == 0)
+            {
+                int strSerialNo = await accountLedgerService.GetSerialNo();
+                model.LedgerId = strSerialNo;
+                model.LedgerCode = strSerialNo.ToString();
+                int value = await accountLedgerService.AddAccountLedgerAsync(model);
+                if (value > 0)
+                {
+					Snackbar.Add("تم إنشاء المورد بنجاح", Severity.Success);
+                    NavigationManager.NavigateTo("/supplier-ar");
+                }
+                else
+                {
+					Snackbar.Add("كود المورد موجود مسبقاً.", Severity.Info);
+                }
+            }
+            else
+            {
+                bool isUpdated = await accountLedgerService.UpdateAccountLedgerAsync(model);
+                if (isUpdated == true)
+                {
+					Snackbar.Add("تم تحديث المورد بنجاح", Severity.Success);
+                    NavigationManager.NavigateTo("/supplier-ar");
+                }
+                else
+                {
+					Snackbar.Add("كود المورد موجود مسبقاً.", Severity.Info);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+			Snackbar.Add($"خطأ في حفظ المورد: {ex.Message}", Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,93 @@
+﻿@inherits LayoutComponentBase
+@inject UserService userService
+@inject NavigationManager NavigationManager
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudRTLProvider RightToLeft="true" />
+<div class="d-flex" dir="rtl" style="font-family: 'Cairo', sans-serif;">
+    <!-- Sidebar - Right Side -->
+    <nav class="sidebar bg-dark text-light vh-100">
+        <div class="p-3">
+            <div class="sidebar-header mb-4 d-flex align-items-center">
+                <img src="img/logo.png" alt="Logo" class="me-2" style="width: 180px;height:60px;">
+            </div>
+            <NavMenu />
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="content flex-grow-1 p-4 bg-light">
+        <header class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle me-2"></i>
+                        <span class="fw-bold">
+                            @if (currentUser != null)
+                            {
+                                @currentUser.Username
+                            }
+                        </span>
+                    </button>
+
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                        <li><a class="dropdown-item" href="/user/profile/@currentUser?.UserId"><i class="fas fa-user me-2"></i> الملف الشخصي</a></li>
+                        <li><a class="dropdown-item" href="/user/change-password/@currentUser?.UserId"><i class="fas fa-lock me-2"></i> تغيير كلمة المرور</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" onclick="@Logout"><i class="fas fa-sign-out-alt me-2"></i> تسجيل الخروج</a></li>
+                    </ul>
+                </div>
+                <a href="/pos-ar" class="btn btn-primary">
+                    <i class="fas fa-cash-register me-2"></i> نقطة البيع
+                </a>
+            </div>
+            <h4>مرحباً، 
+                @if (currentUser !=null)
+                {
+                    @currentUser.Username
+                }
+            </h4>
+        </header>
+        @Body
+    </div>
+</div>
+@code
+{
+    private UserMaster? currentUser;
+    protected async override Task OnInitializedAsync()
+    {
+        try
+        {
+            currentUser = await userService.GetCurrentUser(); // Fetch the current user
+
+            if (currentUser == null)
+            {
+                NavigationManager.NavigateTo("/login", forceLoad: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error during MainLayout initialization: {ex.Message}");
+            Console.WriteLine($"Error during initialization: {ex.Message}");
+            
+            // Navigate to login on error
+            try
+            {
+                NavigationManager.NavigateTo("/login", forceLoad: true);
+            }
+            catch
+            {
+                // If navigation fails, just log it
+                System.Diagnostics.Debug.WriteLine("Failed to navigate to login page");
+            }
+        }
+    }
+
+    private void Logout()
+    {
+        userService.Logout();
+        NavigationManager.NavigateTo("/login");
+    }
+}

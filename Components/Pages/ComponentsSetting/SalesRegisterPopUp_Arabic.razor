@@ -1,0 +1,297 @@
+﻿@inject SalesRegisterService salesRegisterService
+@inject UserService userService
+@inject NavigationManager NavigationManager
+@inject CompanyService companyService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+@using SoftPos.Utilities
+<div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);" dir="rtl">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title d-flex align-items-center">
+                    <i class="fa-solid fa-cash-register me-2"></i>
+                    تفاصيل سجل النقدية @if (saleReg != null)
+                    {
+                        @saleReg.OpeningTime?.ToString("dd/MM/yyyy HH:mm")
+                        <label>إلى</label>
+                        @ToTime.ToString("dd/MM/yyyy HH:mm")
+                    }
+                </h5>
+                <button type="button" class="btn-close" @onclick="CloseModal" aria-label="إغلاق"></button>
+            </div>
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row g-3">
+                    <!-- Left Column -->
+                    <div class="col-md-8">
+                        <table class="table table-bordered table-striped align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>الفئة</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>النقد الافتتاحي</td>
+                                    <td>
+                                        @if (saleReg != null)
+                                        {
+                                            @saleReg.OpeningCashAmount.ToString("F2")
+                                        }
+                                    </td>
+                                </tr>
+                                @if (listSalesRegister != null)
+                                {
+                                    @foreach (var item in listSalesRegister)
+                                    {
+                                        <tr>
+                                            <td>مدفوعات @GetPaymentMethodName(item.Name)</td>
+                                            <td>@item.Amount.ToString("F2")</td>
+                                        </tr>
+                                    }
+                                }
+                                @if (listCloseReturn != null)
+                                {
+                                    @foreach (var item in listCloseReturn)
+                                    {
+                                        <tr>
+                                            <td>مرتجعات المبيعات</td>
+                                            <td>@item.SalesReturnAmount.ToString("F2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>مرتجعات نقدية</td>
+                                            <td>@item.CashReturnAmount.ToString("F2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>دفع لاحق</td>
+                                            <td>@item.PayLater.ToString("F2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>مبلغ الائتمان المطبق</td>
+                                            <td>@item.CreditAppliedAmount.ToString("F2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>المصروفات</td>
+                                            <td>@item.ExpenseAmount.ToString("F2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>مدفوعات المشتريات</td>
+                                            <td>@item.PurchasePayment.ToString("F2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>مبلغ الإغلاق</td>
+                                            <td>@item.ClosingAmount.ToString("F2")</td>
+                                        </tr>
+                                    }
+                                }
+                                <tr class="table-info">
+                                    <td><strong>إجمالي المبيعات</strong></td>
+                                    <td>
+                                        <strong>
+                                            @if (listSalesRegister != null)
+                                            {
+                                                @listSalesRegister.Sum(x => x.Amount).ToString("F2")
+                                            }
+                                        </strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Right Column -->
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="cash-left" class="form-label">
+                                <i class="fa-solid fa-money-bill-wave me-1"></i> إجمالي النقد المتبقي في الدرج
+                            </label>
+                            <input id="cash-left" type="number" class="form-control" @bind="register.CashLeftinDrawer" readonly>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="physical-drawer" class="form-label">
+                                <i class="fa-solid fa-drawer me-1"></i> الدرج الفعلي
+                            </label>
+                            <input id="physical-drawer" type="number" class="form-control"
+                            @bind="register.PhysicalDrawer" @onkeyup="CalculateDrawer" @bind:event="oninput">
+                            <small class="text-muted d-block">النقص: @decShortAmount.ToString("F2")</small>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="closing-note" class="form-label">
+                                <i class="fa-solid fa-note-sticky me-1"></i> ملاحظة الإغلاق
+                            </label>
+                            <textarea id="closing-note" class="form-control" rows="3" @bind="register.Notes" placeholder="أدخل ملاحظة الإغلاق..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <!-- Buttons -->
+                <div class="row mt-3">
+                    <div class="col-md-4 offset-md-4 text-center">
+                        <button type="button" class="btn btn-primary w-100" @onclick="CloseBalance">
+                            <i class="fa-solid fa-lock me-1"></i> إغلاق السجل
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    IList<SalesRegisterClosingBalanceView> listSalesRegister;
+    IList<SalesRegisterClosingBalanceView> listCloseReturn;
+    decimal decShortAmount = 0;
+    SalesRegister register = new();
+    SalesRegister saleReg = new();
+    DateTime ToTime = DateTimeHelper.Now;
+    UserMaster? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            currentUser = await userService.GetCurrentUser();
+            
+            if (currentUser == null)
+            {
+                Snackbar.Add("خطأ: لم يتم العثور على المستخدم الحالي", Severity.Error);
+                return;
+            }
+
+            ToTime = DateTimeHelper.Now;
+            
+            // Load sales register data
+            listSalesRegister = await salesRegisterService.CashRegisterAsync(currentUser.UserId);
+            if (listSalesRegister == null)
+            {
+                listSalesRegister = new List<SalesRegisterClosingBalanceView>();
+            }
+
+            // Load closing return data
+            listCloseReturn = await salesRegisterService.CloseReturnAsync(currentUser.UserId);
+            if (listCloseReturn == null)
+            {
+                listCloseReturn = new List<SalesRegisterClosingBalanceView>();
+            }
+
+            // Load opening cash data
+            saleReg = await salesRegisterService.OpeningCashAsync(currentUser.UserId);
+            
+            if (saleReg == null)
+            {
+                Snackbar.Add("تحذير: لا يوجد سجل مفتوح للمستخدم الحالي", Severity.Warning);
+                
+                // Initialize with default values
+                register.CashLeftinDrawer = 0;
+                register.PhysicalDrawer = 0;
+                return;
+            }
+
+            // Calculate total cash
+            decimal decTotalCash = listSalesRegister.Sum(x => x.Amount);
+            register.CashLeftinDrawer = Math.Round(decTotalCash + saleReg.OpeningCashAmount, 2);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void CalculateDrawer()
+    {
+        decShortAmount = register.CashLeftinDrawer > register.PhysicalDrawer ? Math.Round(register.CashLeftinDrawer - register.PhysicalDrawer, 2) : 0;
+        StateHasChanged();
+    }
+
+    async Task CloseBalance()
+    {
+        try
+        {
+            // Validate input
+            if (currentUser == null)
+            {
+                Snackbar.Add("خطأ: لم يتم العثور على المستخدم الحالي", Severity.Error);
+                return;
+            }
+
+            if (register.PhysicalDrawer < 0)
+            {
+                Snackbar.Add("خطأ: لا يمكن أن يكون المبلغ الفعلي في الدرج سالباً", Severity.Error);
+                return;
+            }
+
+            // Check if there's an open register first
+            var openRegister = await salesRegisterService.OpeningCashAsync(currentUser.UserId);
+            if (openRegister == null)
+            {
+                // Create a new register if none exists
+                var newRegister = new SalesRegister
+                {
+                    UserId = currentUser.UserId,
+                    OpeningTime = DateTimeHelper.Now.AddHours(-1), // Set opening time to 1 hour ago
+                    OpeningCashAmount = 0,
+                    Status = "Open",
+                    Notes = "تم إنشاؤه تلقائياً عند الإغلاق",
+                    AddedDate = DateTimeHelper.Now
+                };
+                
+                await salesRegisterService.SaveAsync(newRegister);
+            }
+
+            // Set register properties
+            register.UserId = currentUser.UserId;
+            // Calculate total cash in drawer (opening cash + sales)
+            decimal totalSales = listSalesRegister?.Sum(x => x.Amount) ?? 0;
+            decimal openingCash = saleReg?.OpeningCashAmount ?? 0;
+            register.ClosingCashAmount = totalSales + openingCash;
+            register.ClosingTime = DateTimeHelper.Now;
+            register.ModifyDate = DateTimeHelper.Now;
+            register.ReturnAmount = 0;
+            register.Status = "Close";
+
+            // Attempt to close the register
+            bool result = await salesRegisterService.CloseBalanceAsync(register);
+            
+            if (result)
+            {
+                Snackbar.Add("تم إغلاق السجل بنجاح", Severity.Success);
+                await Task.Delay(1000); // Give user time to see the success message
+                NavigationManager.NavigateTo("/dashboard");
+            }
+            else
+            {
+                Snackbar.Add("فشل في إغلاق السجل", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ غير متوقع: {ex.Message}", Severity.Error);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CloseModal()
+    {
+        NavigationManager.NavigateTo("/dashboard");
+    }
+
+    private string GetPaymentMethodName(string englishName)
+    {
+        return englishName?.ToLower() switch
+        {
+            "cash" => "النقد",
+            "card" => "البطاقة",
+            "upi" => "UPI",
+            "credit" => "الائتمان",
+            _ => englishName ?? ""
+        };
+    }
+}

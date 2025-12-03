@@ -1,0 +1,62 @@
+﻿@using SoftPos.Services
+@using SoftPos.Data.Setting
+@inject ExpiryNotificationService ExpiryService
+@inject NavigationManager Navigation
+
+<div class="expiry-notifications">
+    @if (ExpiredCount > 0)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" dir="rtl">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>تحذير!</strong> لديك <strong>@ExpiredCount</strong> منتج منتهي الصلاحية.
+            <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="ViewExpiredProducts">
+                عرض المنتجات
+            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (ExpiringCount > 0)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert" dir="rtl">
+            <i class="fas fa-clock me-2"></i>
+            <strong>تنبيه!</strong> لديك <strong>@ExpiringCount</strong> منتج قريب من انتهاء الصلاحية (خلال 30 يوم).
+            <button type="button" class="btn btn-sm btn-outline-warning ms-2" @onclick="ViewExpiringProducts">
+                عرض المنتجات
+            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+</div>
+
+@code {
+    private int ExpiredCount { get; set; }
+    private int ExpiringCount { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNotifications();
+    }
+
+    private async Task LoadNotifications()
+    {
+        ExpiredCount = await ExpiryService.GetExpiredProductsCountAsync();
+        ExpiringCount = await ExpiryService.GetExpiringProductsCountAsync(30);
+    }
+
+    private void ViewExpiredProducts()
+    {
+        Navigation.NavigateTo("/expired-products");
+    }
+
+    private void ViewExpiringProducts()
+    {
+        Navigation.NavigateTo("/expiring-products");
+    }
+
+    public async Task RefreshAsync()
+    {
+        await LoadNotifications();
+        StateHasChanged();
+    }
+}

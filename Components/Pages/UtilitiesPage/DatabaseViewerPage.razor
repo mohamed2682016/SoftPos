@@ -1,0 +1,178 @@
+@page "/database-viewer"
+@using SoftPos.Data
+@using SoftPos.Data.Setting
+@using SoftPos.Data.InventoryModel
+@using SoftPos.Data.Account
+@inject DatabaseContext DbContext
+
+<div class="container-fluid p-4">
+    <h3>عرض جداول قاعدة البيانات</h3>
+    
+    <div class="row mt-3">
+        <div class="col-md-3">
+            <div class="list-group">
+                <button class="list-group-item list-group-item-action @(selectedTable == "Products" ? "active" : "")" 
+                        @onclick='() => LoadTable("Products")'>المنتجات (Products)</button>
+                <button class="list-group-item list-group-item-action @(selectedTable == "SalesMaster" ? "active" : "")" 
+                        @onclick='() => LoadTable("SalesMaster")'>فواتير المبيعات</button>
+                <button class="list-group-item list-group-item-action @(selectedTable == "PurchaseMaster" ? "active" : "")" 
+                        @onclick='() => LoadTable("PurchaseMaster")'>فواتير المشتريات</button>
+                <button class="list-group-item list-group-item-action @(selectedTable == "AccountLedger" ? "active" : "")" 
+                        @onclick='() => LoadTable("AccountLedger")'>الحسابات</button>
+                <button class="list-group-item list-group-item-action @(selectedTable == "StockPosting" ? "active" : "")" 
+                        @onclick='() => LoadTable("StockPosting")'>حركة المخزون</button>
+                <button class="list-group-item list-group-item-action @(selectedTable == "LedgerPosting" ? "active" : "")" 
+                        @onclick='() => LoadTable("LedgerPosting")'>القيود المحاسبية</button>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            @if (!string.IsNullOrEmpty(selectedTable))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>@selectedTable - عدد السجلات: @recordCount</h5>
+                    </div>
+                    <div class="card-body" style="max-height: 600px; overflow: auto;">
+                        @if (tableData != null && tableData.Any())
+                        {
+                            <table class="table table-striped table-bordered table-sm">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        @foreach (var column in tableData.First().Keys)
+                                        {
+                                            <th>@column</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in tableData)
+                                    {
+                                        <tr>
+                                            @foreach (var value in row.Values)
+                                            {
+                                                <td>@value</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p class="text-muted">لا توجد بيانات في هذا الجدول</p>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    اختر جدول من القائمة لعرض محتوياته
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string selectedTable = "";
+    private int recordCount = 0;
+    private List<Dictionary<string, object?>> tableData = new();
+
+    private async Task LoadTable(string tableName)
+    {
+        selectedTable = tableName;
+        tableData.Clear();
+        
+        try
+        {
+            var db = DbContext.GetConnection();
+            
+            switch (tableName)
+            {
+                case "Products":
+                    var products = await db.Table<Product>().ToListAsync();
+                    recordCount = products.Count;
+                    tableData = products.Select(p => new Dictionary<string, object?>
+                    {
+                        ["Id"] = p.ProductId,
+                        ["الكود"] = p.ProductCode,
+                        ["الاسم"] = p.ProductName,
+                        ["السعر"] = p.SalesRate,
+                        ["المخزون"] = p.OpeningStock
+                    }).ToList();
+                    break;
+                    
+                case "SalesMaster":
+                    var sales = await db.Table<SalesMaster>().Take(100).ToListAsync();
+                    recordCount = await db.Table<SalesMaster>().CountAsync();
+                    tableData = sales.Select(s => new Dictionary<string, object?>
+                    {
+                        ["Id"] = s.SalesMasterId,
+                        ["رقم الفاتورة"] = s.VoucherNo,
+                        ["التاريخ"] = s.Date.ToString("yyyy-MM-dd"),
+                        ["العميل"] = s.LedgerId,
+                        ["الإجمالي"] = s.TotalAmount
+                    }).ToList();
+                    break;
+                    
+                case "PurchaseMaster":
+                    var purchases = await db.Table<PurchaseMaster>().Take(100).ToListAsync();
+                    recordCount = await db.Table<PurchaseMaster>().CountAsync();
+                    tableData = purchases.Select(p => new Dictionary<string, object?>
+                    {
+                        ["Id"] = p.PurchaseMasterId,
+                        ["رقم الفاتورة"] = p.VoucherNo,
+                        ["التاريخ"] = p.Date.ToString("yyyy-MM-dd"),
+                        ["المورد"] = p.LedgerId,
+                        ["الإجمالي"] = p.TotalAmount
+                    }).ToList();
+                    break;
+                    
+                case "AccountLedger":
+                    var ledgers = await db.Table<AccountLedger>().Take(100).ToListAsync();
+                    recordCount = await db.Table<AccountLedger>().CountAsync();
+                    tableData = ledgers.Select(l => new Dictionary<string, object?>
+                    {
+                        ["Id"] = l.LedgerId,
+                        ["الاسم"] = l.LedgerName,
+                        ["المجموعة"] = l.AccountGroupId,
+                        ["الرصيد"] = l.OpeningBalance
+                    }).ToList();
+                    break;
+                    
+                case "StockPosting":
+                    var stocks = await db.Table<StockPosting>().Take(100).ToListAsync();
+                    recordCount = await db.Table<StockPosting>().CountAsync();
+                    tableData = stocks.Select(s => new Dictionary<string, object?>
+                    {
+                        ["Id"] = s.StockPostingId,
+                        ["المنتج"] = s.ProductId,
+                        ["التاريخ"] = s.Date.ToString("yyyy-MM-dd"),
+                        ["الكمية الداخلة"] = s.InwardQty,
+                        ["الكمية الخارجة"] = s.OutwardQty
+                    }).ToList();
+                    break;
+                    
+                case "LedgerPosting":
+                    var postings = await db.Table<LedgerPosting>().Take(100).ToListAsync();
+                    recordCount = await db.Table<LedgerPosting>().CountAsync();
+                    tableData = postings.Select(p => new Dictionary<string, object?>
+                    {
+                        ["Id"] = p.LedgerPostingId,
+                        ["الحساب"] = p.LedgerId,
+                        ["التاريخ"] = p.Date.ToString("yyyy-MM-dd"),
+                        ["مدين"] = p.Debit,
+                        ["دائن"] = p.Credit
+                    }).ToList();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error loading table: {ex.Message}");
+        }
+    }
+}

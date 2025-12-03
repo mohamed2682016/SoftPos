@@ -1,0 +1,173 @@
+﻿@page "/sales/register"
+@inject UserService userService
+@inject SalesRegisterService salesregisterService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@using SoftPos.Data.InventoryModel
+@using SoftPos.Utilities
+
+<div class="container mt-4">
+    <!-- قسم الرأس -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4 class="text-primary fw-bold">سجل المبيعات</h4>
+        </div>
+    </div>
+
+    <!-- قسم التصفية -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- من تاريخ -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">من تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="FromDate" />
+                            </div>
+                        </div>
+
+                        <!-- إلى تاريخ -->
+                        <div class="col-lg-2 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">إلى تاريخ</label>
+                                <InputDate class="form-control" @bind-Value="ToDate" />
+                            </div>
+                        </div>
+
+                        <!-- قائمة الكاشير -->
+                        <div class="col-lg-4 col-sm-6 col-12">
+                            <div class="form-group">
+                                <label class="form-label fw-semibold">الكاشير</label>
+                                <select class="form-control" @bind="intUserId">
+                                    <option value="0">جميع المستخدمين</option>
+                                    @if (listUsers != null)
+                                    {
+                                        @foreach (var item in listUsers)
+                                        {
+                                            <option value="@item.UserId">@item.Email</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- زر البحث -->
+                        <div class="col-lg-2 col-sm-6 col-12 align-self-end">
+                            <button class="btn btn-primary w-100" @onclick="Filtter">
+                                <i class="fas fa-search me-2"></i> بحث
+                            </button>
+                        </div>
+                        
+
+                    </div>
+                </div>
+
+                <!-- قسم الجدول -->
+                <div class="table-responsive mt-4">
+                    <table class="table table-bordered table-striped align-middle">
+                        <thead class="table-primary">
+                            <tr>
+                                <th scope="col">الكاشير</th>
+                                <th scope="col">من تاريخ</th>
+                                <th scope="col">إلى تاريخ</th>
+                                <th scope="col">الحالة</th>
+                                <th scope="col">النقد في اليد</th>
+                                <th scope="col">نقدي</th>
+                                <th scope="col">بطاقة</th>
+                                <th scope="col">محفظة</th>
+                                <th scope="col">دفع لاحق</th>
+                                <th scope="col">إجمالي المبيعات</th>
+                                <th scope="col">مبلغ الائتمان المطبق</th>
+                                <th scope="col">مبلغ مرتجعات المبيعات</th>
+                                <th scope="col">مبلغ الإغلاق</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (listSalesRegister == null || !listSalesRegister.Any())
+                            {
+                                <tr>
+                                    <td colspan="13" class="text-center text-muted py-4">
+                                        <div>
+                                            <i class="fas fa-exclamation-circle fs-1 text-warning"></i>
+                                            <h5 class="mt-2">لا توجد بيانات</h5>
+                                            <p class="mb-2">لا توجد سجلات مبيعات في النطاق الزمني المحدد</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in listSalesRegister)
+                                {
+                                    <tr>
+                                        <td>@item.FullName</td>
+                                        <td>@item.OpeningTime</td>
+                                        <td>@item.ClosingTime</td>
+                                        <td>@item.Status</td>
+                                        <td>@item.OpeningCashAmount</td>
+                                        <td>@item.Cash</td>
+                                        <td>@item.Card</td>
+                                        <td>@item.UPI</td>
+                                        <td>@item.PayLater</td>
+                                        <td>@item.TotalSales</td>
+                                        <td>@item.CreditAppliedAmount</td>
+                                        <td>@item.SalesReturnAmount</td>
+                                        <td>@item.ClosingAmount</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            @if (listSalesRegister != null && listSalesRegister.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="fw-bold text-end">الإجمالي</td>
+                                    <td>@listSalesRegister.Sum(x => x.OpeningCashAmount)</td>
+                                    <td>@listSalesRegister.Sum(x => x.Cash)</td>
+                                    <td>@listSalesRegister.Sum(x => x.Card)</td>
+                                    <td>@listSalesRegister.Sum(x => x.UPI)</td>
+                                    <td>@listSalesRegister.Sum(x => x.PayLater)</td>
+                                    <td>@listSalesRegister.Sum(x => x.TotalSales)</td>
+                                    <td>@listSalesRegister.Sum(x => x.CreditAppliedAmount)</td>
+                                    <td>@listSalesRegister.Sum(x => x.SalesReturnAmount)</td>
+                                    <td>@listSalesRegister.Sum(x => x.ClosingAmount)</td>
+                                </tr>
+                            }
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    List<UserMaster> listUsers = new();
+    List<SalesRegisterClosingBalanceView> listSalesRegister = new();
+    DateTime FromDate = DateTimeHelper.Now.AddDays(-7); // أسبوع ماضي
+    DateTime ToDate = DateTimeHelper.Now.AddDays(1);   // غداً
+    int intUserId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Filtter();
+    }
+
+    private async Task Filtter()
+    {
+        try
+        {
+            listUsers = await userService.GetAllUserMastersAsync();
+            listSalesRegister = await salesregisterService.GetAll(intUserId, FromDate, ToDate);
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // Handle error silently
+        }
+    }
+
+
+}

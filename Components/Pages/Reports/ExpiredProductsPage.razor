@@ -1,0 +1,200 @@
+﻿@page "/expired-products"
+@using SoftPos.Services
+@using SoftPos.Data.Setting
+@inject ExpiryNotificationService ExpiryService
+@inject NavigationManager Navigation
+
+<div class="container-fluid" dir="rtl" style="font-family: 'Cairo', sans-serif;">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h3 class="text-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                المنتجات المنتهية الصلاحية
+            </h3>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">
+                        <i class="fas fa-box-open me-2"></i>
+                        إجمالي المنتجات المنتهية
+                    </h5>
+                    <h2 class="text-danger">@ExpiredProducts.Count</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        <i class="fas fa-clock me-2"></i>
+                        المنتجات القريبة من الانتهاء
+                    </h5>
+                    <h2 class="text-warning">@ExpiringProducts.Count</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">قائمة المنتجات المنتهية</h5>
+                </div>
+                <div class="card-body">
+                    @if (ExpiredProducts.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>كود المنتج</th>
+                                        <th>اسم المنتج</th>
+                                        <th>تاريخ الصلاحية</th>
+                                        <th>منتهي منذ</th>
+                                        <th>المخزون</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var product in ExpiredProducts)
+                                    {
+                                        <tr class="table-danger">
+                                            <td>@product.ProductCode</td>
+                                            <td>@product.ProductName</td>
+                                            <td>@product.ExpiryDate?.ToString("yyyy-MM-dd")</td>
+                                            <td>
+                                                @{
+                                                    var daysExpired = Math.Abs(ExpiryService.GetDaysUntilExpiry(product) ?? 0);
+                                                }
+                                                <span class="badge bg-danger">@daysExpired يوم</span>
+                                            </td>
+                                            <td>@product.OpeningStock</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" @onclick="() => EditProduct(product.ProductId)">
+                                                    <i class="fas fa-edit"></i> تعديل
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success text-center">
+                            <i class="fas fa-check-circle me-2"></i>
+                            لا توجد منتجات منتهية الصلاحية
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">المنتجات القريبة من انتهاء الصلاحية (خلال 30 يوم)</h5>
+                </div>
+                <div class="card-body">
+                    @if (ExpiringProducts.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>كود المنتج</th>
+                                        <th>اسم المنتج</th>
+                                        <th>تاريخ الصلاحية</th>
+                                        <th>الأيام المتبقية</th>
+                                        <th>الحالة</th>
+                                        <th>المخزون</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var product in ExpiringProducts)
+                                    {
+                                        var daysRemaining = ExpiryService.GetDaysUntilExpiry(product) ?? 0;
+                                        var status = ExpiryService.GetExpiryStatus(product);
+                                        var rowClass = status == ExpiryStatus.CriticalExpiring ? "table-danger" : "table-warning";
+                                        
+                                        <tr class="@rowClass">
+                                            <td>@product.ProductCode</td>
+                                            <td>@product.ProductName</td>
+                                            <td>@product.ExpiryDate?.ToString("yyyy-MM-dd")</td>
+                                            <td>
+                                                <span class="badge @(daysRemaining <= 7 ? "bg-danger" : "bg-warning")">
+                                                    @daysRemaining يوم
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (status == ExpiryStatus.CriticalExpiring)
+                                                {
+                                                    <span class="badge bg-danger">حرج</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">تحذير</span>
+                                                }
+                                            </td>
+                                            <td>@product.OpeningStock</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            لا توجد منتجات قريبة من انتهاء الصلاحية
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-right me-2"></i>
+                رجوع
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Product> ExpiredProducts { get; set; } = new();
+    private List<Product> ExpiringProducts { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        ExpiredProducts = await ExpiryService.GetExpiredProductsAsync();
+        ExpiringProducts = await ExpiryService.GetExpiringProductsAsync(30);
+    }
+
+    private void EditProduct(int productId)
+    {
+        Navigation.NavigateTo($"/product-edit/{productId}");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+}

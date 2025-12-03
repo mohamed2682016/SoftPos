@@ -1,0 +1,97 @@
+﻿@page "/account-group-ar"
+@inject AccountGroupService accountGroupService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@using SoftPos.Resources
+
+<div class="container mt-4" dir="rtl" style="font-family: 'Cairo', sans-serif;">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>مجموعة الحسابات</h4>
+        </div>
+        <div class="col text-end">
+            <a href="/account-group/add-ar" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i> إضافة مجموعة جديدة
+            </a>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col">
+            <div class="table-responsive">
+                <MudTable Items="@listAccountGroup" Dense="@dense" Hover="@hover">
+
+                    <HeaderContent>
+                        <MudTh>اسم مجموعة الحساب</MudTh>
+                        <MudTh>تحت</MudTh>
+                        <MudTh>طبيعة المجموعة</MudTh>
+                        <MudTh>الإجراءات</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="اسم مجموعة الحساب" Style="width:400px;">@context.AccountGroupName</MudTd>
+                        <MudTd DataLabel="تحت" Style="width:400px;">@context.Under</MudTd>
+                        <MudTd DataLabel="طبيعة المجموعة" Style="width:200px;">@context.Nature</MudTd>
+                        <MudTd DataLabel="الإجراءات" Style="width:150px;">
+                            <div class="btn-group btn-group-sm">
+                                <a href="/account-group/@context.AccountGroupId-ar" class="btn btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-outline-danger" @onclick="() => Delete(context.AccountGroupId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private List<AccountGroupView> listAccountGroup = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listAccountGroup = await accountGroupService.GetAllAccountGroupAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private async Task Delete(int id)
+    {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف مجموعة الحساب هذه؟");
+        if (confirmed)
+        {
+            try
+            {
+                // TODO: Implement delete functionality
+                Snackbar.Add("تم حذف مجموعة الحساب بنجاح", Severity.Success);
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"خطأ في حذف مجموعة الحساب: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

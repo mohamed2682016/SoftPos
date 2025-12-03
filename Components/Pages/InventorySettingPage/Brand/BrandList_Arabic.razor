@@ -1,0 +1,249 @@
+﻿@page "/brand-ar"
+@inject BrandService brandService
+@inject MudBlazor.ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+@using SoftPos.Utilities
+<div class="container mt-4" dir="rtl">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h4>العلامات التجارية</h4>
+        </div>
+        <div class="col text-start">
+            <button class="btn btn-primary" @onclick="ShowModal">
+                <i class="fas fa-plus me-2"></i> إضافة علامة تجارية
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="row">
+        <div class="col">
+            <div class="table-responsive">
+                <MudTable Items="@listBrand" Dense="@dense" Hover="@hover">
+
+                    <HeaderContent>
+                        <MudTh>الاسم</MudTh>
+                        <MudTh>الصورة</MudTh>
+                        <MudTh>الإجراءات</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Name" Style="width:900px;">@context.Name</MudTd>
+                        <MudTd DataLabel="Image">
+                            @if (string.IsNullOrEmpty(context.Image))
+                            {
+                                <img src="/img/noimage.png" height="40" width="40" />
+                            }
+                            else
+                            {
+                                <img src="@context.Image" width="40" height="40" />
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="">
+                            <div class="d-flex justify-content-start">
+                                <button class="btn btn-warning btn-sm me-2" @onclick="() => Edit(context.BrandId)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => Delete(context.BrandId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    @if (IsModalVisible)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+            <div class="modal-dialog">
+                <EditForm Model="brand" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">@ModalTitle</h5>
+                            <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">الاسم</label>
+                                <input type="text" class="form-control" @bind="brand.Name" placeholder="أدخل اسم العلامة التجارية">
+                                <ValidationMessage For="@(() => brand.Name)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">الصورة</label>
+                                <div class="image-uploads">
+                                    @if (brand.Image == string.Empty)
+                                    {
+                                        <img src="/img/noimage.png" height="60" width="60">
+                                    }
+                                    else
+                                    {
+                                        <img src="@brand.Image" width="60" height="60">
+                                    }
+                                </div>
+                                <InputFile OnChange="OnFileChange" />
+                                <ValidationMessage For="@(() => brand.Image)" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ</button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool dense = true;
+    private bool hover = true;
+    private Brand brand = new();
+    private List<Brand> listBrand = new();
+    private bool IsModalVisible = false;
+    private string ModalTitle = "إضافة علامة تجارية";
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            listBrand = await brandService.GetAllBrandsAsync();
+            await Reset();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في تحميل البيانات: {ex.Message}", Severity.Error);
+        }
+    }
+    private Task Reset()
+    {
+        IsModalVisible = false;
+        brand.BrandId = 0;
+        brand.Name = string.Empty;
+        brand.Image = string.Empty;
+        brand.AddedDate = DateTimeHelper.Now;
+        return Task.CompletedTask;
+    }
+
+    private async Task ShowModal()
+    {
+        ModalTitle = "إضافة علامة تجارية";
+        await Reset();
+        IsModalVisible = true;
+    }
+    private async Task Save()
+    {
+        try
+        {
+            if (brand.BrandId == 0)
+            {
+                int value = await brandService.AddBrandAsync(brand);
+                if (value > 0)
+                {
+                    Snackbar.Add("تم إنشاء العلامة التجارية بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("اسم العلامة التجارية موجود مسبقاً.", Severity.Info);
+                }
+            }
+            else
+            {
+                bool isUpdated = await brandService.UpdateBrandAsync(brand);
+                if (isUpdated == true)
+                {
+                    Snackbar.Add("تم تحديث العلامة التجارية بنجاح", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("اسم العلامة التجارية موجود مسبقاً.", Severity.Info);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في حفظ العلامة التجارية: {ex.Message}", Severity.Error);
+        }
+    }
+    private async Task Edit(int id)
+    {
+        try
+        {
+            ModalTitle = "تعديل العلامة التجارية";
+            brand = await brandService.GetBrandByIdAsync(id);
+            IsModalVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"خطأ في جلب العلامة التجارية: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        try
+        {
+            // Show a confirmation dialog to the user
+            bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "هل أنت متأكد من حذف هذه العلامة التجارية؟");
+
+            if (!confirmed)
+            {
+                return; // User canceled the action
+            }
+
+            // Attempt to delete the Brand
+            bool isDeleted = await brandService.DeleteBrandAsync(id);
+
+            if (isDeleted == true)
+            {
+                Snackbar.Add("تم حذف العلامة التجارية بنجاح.", Severity.Success);
+                await LoadData(); // Reload the data after successful deletion
+            }
+            else
+            {
+                Snackbar.Add("لا يمكن حذف العلامة التجارية لأنها مستخدمة في العمليات.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"حدث خطأ أثناء حذف العلامة التجارية: {ex.Message}", Severity.Error);
+        }
+    }
+    private Task CloseModal()
+    {
+        IsModalVisible = false;
+        return Task.CompletedTask;
+    }
+    async Task OnFileChange(InputFileChangeEventArgs e)
+    {
+        var format = "image/png";
+        var resizedImage = await e.File.RequestImageFileAsync(format, 226, 226);
+        var buffer = new byte[resizedImage.Size];
+        await resizedImage.OpenReadStream().ReadAsync(buffer);
+        var imageData = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        if (imageData == null)
+        {
+            brand.Image = string.Empty;
+        }
+        else
+        {
+            brand.Image = imageData;
+        }
+    }
+}
