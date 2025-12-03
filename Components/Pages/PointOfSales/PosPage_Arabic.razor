@@ -687,14 +687,14 @@
                 return;
             }
 
-            UpdateTodoList(product);
+            await UpdateTodoList(product);
             CalculateTotal();
             strBarcode = string.Empty;
             listProductAll = null;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
     }
-    private async void UpdateTodoList(ProductView product)
+    private async Task UpdateTodoList(ProductView product)
     {
         var added = productList.FirstOrDefault(p => p.ProductId == product.ProductId);
         if (added != null)
@@ -709,11 +709,11 @@
             product.CalculateRowSalesAmounts(company);
             productList.Add(product);
         }
-        JSRuntime.InvokeVoidAsync("UpdateTodoList", "/sounds/success.mp3");
+        await JSRuntime.InvokeVoidAsync("UpdateTodoList", "/sounds/success.mp3");
         CalculateTotal();
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
-    async void editItem(int id)
+    private async Task editItem(int id)
     {
         var myTodo = productList.FirstOrDefault(x => x.ProductId == id);
 
@@ -1384,11 +1384,11 @@
                 return;
             }
 
-            UpdateTodoList(product);
+            await UpdateTodoList(product);
             CalculateTotal();
             strBarcode = string.Empty;
             listAutocomplete = null;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1433,11 +1433,11 @@
                     }
                 }
 
-                UpdateTodoList(product);
+                await UpdateTodoList(product);
                 CalculateTotal();
                 strBarcode = string.Empty;
                 listAutocomplete = null;
-                StateHasChanged();
+                await InvokeAsync(StateHasChanged);
                 return;
             }
             
